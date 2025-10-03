@@ -3,7 +3,6 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import xlsx from 'xlsx';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,123 +65,23 @@ type CustomerRow = {
 };
 
 function readCustomers(): CustomerRow[] {
-  // Vercel環境では、プロジェクトルートからの相対パスを使用
-  const customersFolder = process.env.NODE_ENV === 'production' 
-    ? path.resolve(process.cwd(), '☆顧客フォルダ')
-    : path.resolve(
-        __dirname,
-        '..', // server -> src
-        '..', // src -> webapp
-        '..', // webapp -> workspace root
-        '☆顧客フォルダ'
-      );
-
-  if (!fs.existsSync(customersFolder)) {
-    console.log('Customers folder not found:', customersFolder);
-    console.log('Current working directory:', process.cwd());
-    console.log('__dirname:', __dirname);
-    return [];
-  }
-
-  const allCustomers: CustomerRow[] = [];
-  
   try {
-    // 顧客フォルダ内のすべてのサブフォルダを取得
-    const customerFolders = fs.readdirSync(customersFolder, { withFileTypes: true })
-      .filter(dirent => dirent.isDirectory())
-      .map(dirent => dirent.name);
-
-    console.log(`Found ${customerFolders.length} customer folders`);
-
-    for (const folderName of customerFolders) {
-      const customerFilePath = path.join(customersFolder, folderName, '顧客ファイル.xlsx');
-      
-      if (fs.existsSync(customerFilePath)) {
-        try {
-          const workbook = xlsx.readFile(customerFilePath);
-          
-          // 顧客データベースシートを優先的に探す
-          let targetSheet = null;
-          for (const sheetName of workbook.SheetNames) {
-            if (sheetName === '顧客データベース') {
-              targetSheet = workbook.Sheets[sheetName];
-              break;
-            }
-          }
-          
-          // 顧客データベースシートが見つからない場合は最初のシートを使用
-          if (!targetSheet && workbook.SheetNames.length > 0) {
-            const firstSheetName = workbook.SheetNames[0];
-            if (firstSheetName) {
-              targetSheet = workbook.Sheets[firstSheetName];
-            }
-          }
-          
-          if (targetSheet) {
-            // シートの範囲を確認
-            const range = targetSheet['!ref'];
-            if (range) {
-              // 行と列の数を取得
-              const rangeParts = range.split(':');
-              const endCell = rangeParts[1];
-              if (endCell) {
-                const endRow = parseInt(endCell.replace(/[A-Z]/g, ''));
-                
-                // 2行目以降のデータを取得（1行目はヘッダー）
-                if (endRow >= 2) {
-                  // ヘッダー行を取得
-                  const headerRow = xlsx.utils.sheet_to_json(targetSheet, { header: 1, range: 0 })[0] as string[];
-                  
-                  // データ行を取得（2行目から）
-                  const dataRows = xlsx.utils.sheet_to_json(targetSheet, { header: 1, range: 1 }) as unknown[][];
-                  
-                  // 各有効なデータ行を処理
-                  dataRows.forEach(dataRow => {
-                    // データ行が空でないかチェック
-                    if (dataRow.length > 0 && dataRow[1] && String(dataRow[1]).trim() !== '') {
-                      // ヘッダーとデータを組み合わせてオブジェクトを作成
-                      const customerData: CustomerRow = {};
-                      
-                      headerRow.forEach((header: string, index: number) => {
-                        if (header && dataRow[index] !== undefined) {
-                          customerData[header] = dataRow[index];
-                        }
-                      });
-                      
-                      // フォルダ名から顧客情報を抽出
-                      const folderInfo = parseFolderName(folderName);
-                      
-                      // 日付フィールドを変換
-                      if (customerData['次回車検満期日'] && typeof customerData['次回車検満期日'] === 'number') {
-                        customerData['次回車検満期日'] = convertExcelDateToString(customerData['次回車検満期日']);
-                      }
-                      if (customerData['初年度'] && typeof customerData['初年度'] === 'number') {
-                        customerData['初年度'] = convertExcelDateToString(customerData['初年度']);
-                      }
-                      
-                      // フォルダ情報を追加
-                      customerData['フォルダ名'] = folderName;
-                      customerData['顧客コード'] = folderInfo.code;
-                      customerData['顧客名'] = folderInfo.name;
-                      
-                      allCustomers.push(customerData);
-                    }
-                  });
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.error(`Error reading ${customerFilePath}:`, error);
-        }
-      }
-    }
-
-    console.log(`Loaded ${allCustomers.length} customers from ${customerFolders.length} folders`);
-    return allCustomers;
+    // JSONファイルからデータを読み込み
+    const dataPath = path.join(__dirname, 'data', 'customers.json');
     
+    if (!fs.existsSync(dataPath)) {
+      console.log('Customer data JSON file not found:', dataPath);
+      return [];
+    }
+    
+    console.log('Reading customer data from JSON file:', dataPath);
+    const jsonData = fs.readFileSync(dataPath, 'utf8');
+    const customers = JSON.parse(jsonData) as CustomerRow[];
+    
+    console.log(`Loaded ${customers.length} customers from JSON file`);
+    return customers;
   } catch (error) {
-    console.error('Error reading customers folder:', error);
+    console.error('Error reading customer data:', error);
     return [];
   }
 }
@@ -220,7 +119,7 @@ app.get('/api/customers', (_req, res) => {
     const rows = readCustomers();
     res.json({ count: rows.length, rows });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to read Excel', detail: String(err) });
+    res.status(500).json({ error: 'Failed to read customer data', detail: String(err) });
   }
 });
 
