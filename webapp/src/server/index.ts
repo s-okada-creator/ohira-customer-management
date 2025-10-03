@@ -112,7 +112,10 @@ function readCustomers(): CustomerRow[] {
           
           // 顧客データベースシートが見つからない場合は最初のシートを使用
           if (!targetSheet && workbook.SheetNames.length > 0) {
-            targetSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const firstSheetName = workbook.SheetNames[0];
+            if (firstSheetName) {
+              targetSheet = workbook.Sheets[firstSheetName];
+            }
           }
           
           if (targetSheet) {
