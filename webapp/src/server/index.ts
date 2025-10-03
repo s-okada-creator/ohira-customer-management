@@ -67,10 +67,15 @@ type CustomerRow = {
 function readCustomers(): CustomerRow[] {
   try {
     // JSONファイルからデータを読み込み
-    const dataPath = path.join(__dirname, 'data', 'customers.json');
+    // Vercel環境では、dist/server/data/customers.json にある
+    const dataPath = process.env.NODE_ENV === 'production' 
+      ? path.join(__dirname, 'data', 'customers.json')
+      : path.join(__dirname, 'data', 'customers.json');
     
     if (!fs.existsSync(dataPath)) {
       console.log('Customer data JSON file not found:', dataPath);
+      console.log('Current directory:', __dirname);
+      console.log('Available files:', fs.readdirSync(__dirname));
       return [];
     }
     

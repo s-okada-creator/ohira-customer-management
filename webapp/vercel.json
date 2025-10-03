@@ -7,7 +7,7 @@
       "src": "src/server/index.ts",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["src/**", "../☆顧客フォルダ/**"],
+        "includeFiles": ["src/**"],
         "maxDuration": 30
       }
     }
