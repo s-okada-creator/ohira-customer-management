@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { getGoogleSheetsData } from './googleSheets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -64,31 +65,52 @@ type CustomerRow = {
   [key: string]: unknown;
 };
 
-function readCustomers(): CustomerRow[] {
+// Google Sheets APIを使用してデータを取得する関数
+async function readCustomers(): Promise<CustomerRow[]> {
   try {
-    // JSONファイルからデータを読み込み
-    // Vercel環境では、dist/server/data/customers.json にある
-    const dataPath = process.env.NODE_ENV === 'production' 
-      ? path.join(__dirname, 'data', 'customers.json')
-      : path.join(__dirname, 'data', 'customers.json');
+    const googleSheetsData = await getGoogleSheetsData();
     
-    if (!fs.existsSync(dataPath)) {
-      console.log('Customer data JSON file not found:', dataPath);
-      console.log('Current directory:', __dirname);
-      console.log('Available files:', fs.readdirSync(__dirname));
-      return [];
-    }
+    // Google SheetsデータをCustomerRow形式に変換
+    const customers: CustomerRow[] = googleSheetsData.map(row => {
+      // シート名から顧客情報を抽出
+      const folderInfo = parseFolderName(row.シート名);
+      
+      // ファイルパスからフォルダ名を抽出
+      const folderName = extractFolderNameFromPath(row.ファイルパス);
+      
+      return {
+        '顧客番号': row.顧客番号,
+        '顧客名': row.顧客名,
+        '車種名': row.車種名,
+        'シート名': row.シート名,
+        'ファイルパス': row.ファイルパス,
+        'フォルダ名': folderName,
+        '顧客コード': folderInfo.code,
+        '顧客名（フォルダ）': folderInfo.name,
+        // 既存のCustomerRow形式に合わせて追加フィールドを設定
+        '名　前': row.顧客名,
+        'ふりがな': '',
+        '自宅郵便番号': '',
+        '自宅住所1': '',
+        '自宅住所2': '',
+        '次回車検満期日': '',
+        '初年度': '',
+      } as CustomerRow;
+    });
     
-    console.log('Reading customer data from JSON file:', dataPath);
-    const jsonData = fs.readFileSync(dataPath, 'utf8');
-    const customers = JSON.parse(jsonData) as CustomerRow[];
-    
-    console.log(`Loaded ${customers.length} customers from JSON file`);
+    console.log(`Converted ${customers.length} customers from Google Sheets`);
     return customers;
   } catch (error) {
-    console.error('Error reading customer data:', error);
+    console.error('Error reading customer data from Google Sheets:', error);
     return [];
   }
+}
+
+// ファイルパスからフォルダ名を抽出する関数
+function extractFolderNameFromPath(filePath: string): string {
+  const pathParts = filePath.split('/');
+  const folderPart = pathParts.find(part => part.includes('様'));
+  return folderPart || '';
 }
 
 // Excel日付シリアル値を文字列に変換する関数
@@ -119,12 +141,12 @@ function parseFolderName(folderName: string): { code: string; name: string } {
   return { code: '', name: folderName };
 }
 
-app.get('/api/customers', (_req, res) => {
+app.get('/api/customers', async (_req, res) => {
   try {
-    const rows = readCustomers();
+    const rows = await readCustomers();
     res.json({ count: rows.length, rows });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to read customer data', detail: String(err) });
+    res.status(500).json({ error: 'Failed to read customer data from Google Sheets', detail: String(err) });
   }
 });
 
