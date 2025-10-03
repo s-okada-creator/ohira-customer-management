@@ -122,28 +122,29 @@ function readCustomers(): CustomerRow[] {
               // 行と列の数を取得
               const rangeParts = range.split(':');
               const endCell = rangeParts[1];
-              const endRow = parseInt(endCell.replace(/[A-Z]/g, ''));
-              
-              // 2行目以降のデータを取得（1行目はヘッダー）
-              if (endRow >= 2) {
-                // ヘッダー行を取得
-                const headerRow = xlsx.utils.sheet_to_json(targetSheet, { header: 1, range: 0 })[0];
+              if (endCell) {
+                const endRow = parseInt(endCell.replace(/[A-Z]/g, ''));
                 
-                // データ行を取得（2行目から）
-                const dataRows = xlsx.utils.sheet_to_json(targetSheet, { header: 1, range: 1 });
-                
-                // 各有効なデータ行を処理
-                dataRows.forEach(dataRow => {
-                  // データ行が空でないかチェック
-                  if (dataRow.length > 0 && dataRow[1] && String(dataRow[1]).trim() !== '') {
-                    // ヘッダーとデータを組み合わせてオブジェクトを作成
-                    const customerData: CustomerRow = {};
-                    
-                    headerRow.forEach((header, index) => {
-                      if (header && dataRow[index] !== undefined) {
-                        customerData[header] = dataRow[index];
-                      }
-                    });
+                // 2行目以降のデータを取得（1行目はヘッダー）
+                if (endRow >= 2) {
+                  // ヘッダー行を取得
+                  const headerRow = xlsx.utils.sheet_to_json(targetSheet, { header: 1, range: 0 })[0] as string[];
+                  
+                  // データ行を取得（2行目から）
+                  const dataRows = xlsx.utils.sheet_to_json(targetSheet, { header: 1, range: 1 }) as unknown[][];
+                  
+                  // 各有効なデータ行を処理
+                  dataRows.forEach(dataRow => {
+                    // データ行が空でないかチェック
+                    if (dataRow.length > 0 && dataRow[1] && String(dataRow[1]).trim() !== '') {
+                      // ヘッダーとデータを組み合わせてオブジェクトを作成
+                      const customerData: CustomerRow = {};
+                      
+                      headerRow.forEach((header: string, index: number) => {
+                        if (header && dataRow[index] !== undefined) {
+                          customerData[header] = dataRow[index];
+                        }
+                      });
                     
                     // フォルダ名から顧客情報を抽出
                     const folderInfo = parseFolderName(folderName);
@@ -201,7 +202,7 @@ function convertExcelDateToString(excelDate: number): string {
 function parseFolderName(folderName: string): { code: string; name: string } {
   // 例: "0235となか戸中公子様(ﾐﾗｲｰｽ)"
   const match = folderName.match(/^(\d+)(.+)$/);
-  if (match) {
+  if (match && match[1] && match[2]) {
     return {
       code: match[1],
       name: match[2].replace(/[()（）]/g, '') // 括弧を除去
