@@ -5,7 +5,8 @@
       "src": "webapp/src/server/index.ts",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["webapp/src/**", "☆顧客フォルダ/**"]
+        "includeFiles": ["webapp/src/**", "☆顧客フォルダ/**"],
+        "maxDuration": 30
       }
     }
   ],
@@ -14,10 +15,5 @@
       "src": "/(.*)",
       "dest": "webapp/src/server/index.ts"
     }
-  ],
-  "functions": {
-    "webapp/src/server/index.ts": {
-      "maxDuration": 30
-    }
-  }
+  ]
 }
