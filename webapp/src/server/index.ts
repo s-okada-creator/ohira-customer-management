@@ -1,9 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
-import { getGoogleSheetsData } from './googleSheets.js';
+import { getCustomerSheetValues } from './googleSheets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,96 +13,171 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve static frontend
-if (process.env.NODE_ENV === 'production') {
-  // Vercel環境では、プロジェクトルートからの相対パスを使用
-  app.use(express.static(path.resolve(process.cwd(), 'webapp', 'src', 'public')));
-} else {
-  // 開発環境
-  app.use(express.static(path.resolve(__dirname, '..', 'public')));
-  app.use(express.static(path.resolve(__dirname, 'public')));
+const staticDirCandidates = [
+  path.resolve(process.cwd(), 'dist', 'public'),
+  path.resolve(process.cwd(), 'src', 'public'),
+  path.resolve(__dirname, '..', 'public'),
+  path.resolve(__dirname, 'public')
+];
+
+for (const dir of staticDirCandidates) {
+  if (fs.existsSync(dir)) {
+    app.use(express.static(dir));
+  }
 }
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
 });
 
-// Load Excel from configured path
-function getExcelPath(): string {
-  // default to sibling folder "0顧客マスター/顧客ファイル.xlsx" at workspace root
-  // Allow override via env EXCEL_PATH
-  const envPath = process.env.EXCEL_PATH;
-  if (envPath && fs.existsSync(envPath)) return envPath;
-
-  // try absolute known path based on provided workspace
-  const defaultPath = path.resolve(
-    __dirname,
-    '..', // server -> parent
-    '..', // -> webapp (project root)
-    '..', // -> workspace root
-    '0顧客マスター',
-    '顧客ファイル.xlsx'
-  );
-  return defaultPath;
-}
-
 type CustomerRow = {
-  名前?: string;
-  振り仮名?: string;
-  郵便番号?: string;
-  自宅住所?: string;
-  自宅住所2?: string;
-  携帯番号?: string;
-  自宅電話番号?: string;
-  会社名?: string;
-  会社の郵便番号?: string;
-  社名?: string;
-  車両ナンバー?: string;
-  車台番号?: string;
-  型式?: string;
-  類別番号?: string;
-  初年度?: string | number | Date;
-  次回車検満期日?: string | number | Date;
-  [key: string]: unknown;
+  顧客番号: string;
+  顧客名: string;
+  車種名: string;
+  シート名: string;
+  ファイルパス: string;
+  フォルダ名: string;
+  顧客コード: string;
+  '顧客名（フォルダ）': string;
+  '名　前': string;
+  'ふりがな': string;
+  '自宅郵便番号': string;
+  '自宅住所1': string;
+  '自宅住所2': string;
+  '携帯番号': string;
+  '自宅電話番号': string;
+  '会社名': string;
+  '会社郵便番号': string;
+  '車　名': string;
+  '車両ナンバー': string;
+  '車台番号': string;
+  '型式・年式番号': string;
+  '類別番号': string;
+  '初年度': string;
+  '次回車検満期日': string;
 };
 
-// Google Sheets APIを使用してデータを取得する関数
+const FIELD_MAP: Record<string, keyof CustomerRow> = {
+  'コード№': '顧客番号',
+  '名　前': '名　前',
+  'ふりがな': 'ふりがな',
+  '自宅郵便番号': '自宅郵便番号',
+  '自宅住所1': '自宅住所1',
+  '自宅住所2': '自宅住所2',
+  '携帯番号': '携帯番号',
+  '自宅電話番号': '自宅電話番号',
+  '会社名': '会社名',
+  '会社郵便番号': '会社郵便番号',
+  '車　名': '車　名',
+  '車両ナンバー': '車両ナンバー',
+  '車台番号': '車台番号',
+  '型式・年式番号': '型式・年式番号',
+  '類別番号': '類別番号',
+  '初年度': '初年度',
+  '次回車検満期日': '次回車検満期日',
+};
+
+function handleField_(customer: CustomerRow, label: string, value: unknown) {
+  if (!label) return;
+  const key = FIELD_MAP[label];
+  if (!key) return;
+
+  let stringValue = '';
+  if (value == null || value === '') {
+    stringValue = '';
+  } else if (key === '次回車検満期日' && typeof value === 'number') {
+    stringValue = convertExcelDateToString(value);
+  } else {
+    stringValue = String(value);
+  }
+
+  if (key === '初年度') {
+    customer[key] = stringValue;
+    return;
+  }
+
+  if (key === '次回車検満期日') {
+    customer[key] = stringValue;
+    return;
+  }
+
+  customer[key] = stringValue;
+}
+
+// 統合Excelブックからデータを取得する関数
 async function readCustomers(): Promise<CustomerRow[]> {
   try {
-    const googleSheetsData = await getGoogleSheetsData();
-    
-    // Google SheetsデータをCustomerRow形式に変換
-    const customers: CustomerRow[] = googleSheetsData.map(row => {
-      // シート名から顧客情報を抽出
-      const folderInfo = parseFolderName(row.シート名);
-      
-      // ファイルパスからフォルダ名を抽出
-      const folderName = extractFolderNameFromPath(row.ファイルパス);
-      
-      return {
-        '顧客番号': row.顧客番号,
-        '顧客名': row.顧客名,
-        '車種名': row.車種名,
-        'シート名': row.シート名,
-        'ファイルパス': row.ファイルパス,
-        'フォルダ名': folderName,
-        '顧客コード': folderInfo.code,
+    const sheetValues = await getCustomerSheetValues();
+
+    console.log(`Google Sheetsから ${sheetValues.length} 件の顧客シートを処理中...`);
+
+    const customers: CustomerRow[] = [];
+    const processedCustomers = new Set<string>();
+
+    for (const sheet of sheetValues) {
+      const data = sheet.values;
+      if (data.length < 2) continue;
+
+      const folderInfo = parseFolderName(sheet.sheetName);
+      const customerKey = folderInfo.code || sheet.sheetName;
+      if (processedCustomers.has(customerKey)) continue;
+      processedCustomers.add(customerKey);
+
+      const customer: CustomerRow = {
+        顧客番号: folderInfo.code,
+        顧客名: folderInfo.name,
+        車種名: '',
+        シート名: sheet.sheetName,
+        ファイルパス: `GoogleSheet: ${sheet.sheetName}`,
+        フォルダ名: folderInfo.name,
+        顧客コード: folderInfo.code,
         '顧客名（フォルダ）': folderInfo.name,
-        // 既存のCustomerRow形式に合わせて追加フィールドを設定
-        '名　前': row.顧客名,
+        '名　前': folderInfo.name,
         'ふりがな': '',
         '自宅郵便番号': '',
         '自宅住所1': '',
         '自宅住所2': '',
-        '次回車検満期日': '',
+        '携帯番号': '',
+        '自宅電話番号': '',
+        '会社名': '',
+        '会社郵便番号': '',
+        '車　名': '',
+        '車両ナンバー': '',
+        '車台番号': '',
+        '型式・年式番号': '',
+        '類別番号': '',
         '初年度': '',
-      } as CustomerRow;
-    });
+        '次回車検満期日': '',
+      };
+
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        if (!row) continue;
+        const leftLabel = String(row[0] ?? '').trim();
+        const leftValue = row[1];
+        handleField_(customer, leftLabel, leftValue);
+
+        const rightLabel = String(row[2] ?? '').trim();
+        const rightValue = row[3];
+        handleField_(customer, rightLabel, rightValue);
+      }
+
+      // 名前・ふりがなの補完
+      if (!customer['名　前']) customer['名　前'] = folderInfo.name;
+      if (!customer['顧客名']) customer['顧客名'] = customer['名　前'];
+      if (!customer['車　名']) customer['車　名'] = folderInfo.car || '';
+      if (!customer['ふりがな']) {
+        const parsed = parseCustomerName(customer['名　前']);
+        customer['ふりがな'] = parsed.kana;
+      }
+
+      customers.push(customer);
+    }
     
-    console.log(`Converted ${customers.length} customers from Google Sheets`);
+    console.log(`Google Sheetsから ${customers.length} 件の顧客データを取得しました`);
     return customers;
   } catch (error) {
-    console.error('Error reading customer data from Google Sheets:', error);
+    console.error('Google Sheetsからの顧客データ読み込みエラー:', error);
     return [];
   }
 }
@@ -129,24 +205,54 @@ function convertExcelDateToString(excelDate: number): string {
 }
 
 // フォルダ名から顧客情報を抽出する関数
-function parseFolderName(folderName: string): { code: string; name: string } {
+function parseFolderName(folderName: string): { code: string; name: string; car?: string | undefined } {
   // 例: "0235となか戸中公子様(ﾐﾗｲｰｽ)"
   const match = folderName.match(/^(\d+)(.+)$/);
   if (match && match[1] && match[2]) {
+    const rest = match[2];
+    const carMatch = rest.match(/（([^）]+)）|\(([^)]+)\)$/);
+    const carName = carMatch ? carMatch[1] || carMatch[2] : undefined;
+    const name = rest.replace(/[()（）]/g, '').replace(/様.*$/, '').trim();
     return {
       code: match[1],
-      name: match[2].replace(/[()（）]/g, '') // 括弧を除去
+      name: name || rest.trim(),
+      car: carName ?? undefined,
     };
   }
   return { code: '', name: folderName };
 }
+
+// 顧客名から名前とふりがなを分離する関数
+function parseCustomerName(customerName: string): { name: string; kana: string } {
+  if (!customerName) return { name: '', kana: '' };
+  
+  // 例: "おおひら大平恵美" → "大平恵美", "おおひら"
+  // ひらがな部分と漢字部分を分離
+  const kanaMatch = customerName.match(/^([あ-ん]+)/);
+  const kanjiMatch = customerName.match(/([一-龯]+.*)$/);
+  
+      if (kanaMatch && kanjiMatch) {
+        return {
+          kana: kanaMatch[1] || '',
+          name: kanjiMatch[1] || ''
+        };
+      }
+  
+  // 分離できない場合は、そのまま名前として使用
+  return {
+    name: customerName,
+    kana: ''
+  };
+}
+
 
 app.get('/api/customers', async (_req, res) => {
   try {
     const rows = await readCustomers();
     res.json({ count: rows.length, rows });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to read customer data from Google Sheets', detail: String(err) });
+    console.error('API Error:', err);
+    res.status(500).json({ error: '統合Excelブックからの顧客データ読み込みに失敗しました', detail: String(err) });
   }
 });
 

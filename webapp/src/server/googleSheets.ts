@@ -1,52 +1,51 @@
+import 'dotenv/config';
 import { google } from 'googleapis';
 
-export interface GoogleSheetsRow {
-  顧客番号: string;
-  顧客名: string;
-  車種名: string;
-  シート名: string;
-  ファイルパス: string;
+export interface GoogleSheetValues {
+  sheetName: string;
+  values: (string | number | undefined)[][];
 }
 
-export async function getGoogleSheetsData(): Promise<GoogleSheetsRow[]> {
-  try {
-    const apiKey = process.env.GOOGLE_SHEETS_API_KEY;
-    const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
-    
-    if (!apiKey || !spreadsheetId) {
-      throw new Error('Missing Google Sheets API configuration');
-    }
-    
-    const sheets = google.sheets({ 
-      version: 'v4', 
-      auth: apiKey 
-    });
-    
-    console.log('Fetching data from Google Sheets...');
-    
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId: spreadsheetId,
-      range: 'A:E', // A列からE列まで
-    });
+export async function getCustomerSheetValues(): Promise<GoogleSheetValues[]> {
+  const apiKey = process.env.GOOGLE_SHEETS_API_KEY;
+  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
 
-    const rows = response.data.values || [];
-    console.log(`Fetched ${rows.length} rows from Google Sheets`);
-
-    // ヘッダー行をスキップ（1行目）
-    const dataRows = rows.slice(1);
-    
-    const customers: GoogleSheetsRow[] = dataRows.map((row: string[]) => ({
-      顧客番号: row[0] || '',
-      顧客名: row[1] || '',
-      車種名: row[2] || '',
-      シート名: row[3] || '',
-      ファイルパス: row[4] || '',
-    }));
-
-    console.log(`Converted ${customers.length} customers from Google Sheets`);
-    return customers;
-  } catch (error) {
-    console.error('Error fetching Google Sheets data:', error);
-    throw error;
+  if (!apiKey || !spreadsheetId) {
+    throw new Error('Missing Google Sheets API configuration');
   }
+
+  const sheets = google.sheets({ version: 'v4', auth: apiKey });
+
+  console.log('Fetching sheet metadata from Google Sheets...');
+
+  const meta = await sheets.spreadsheets.get({
+    spreadsheetId,
+    fields: 'sheets(properties(title))',
+  });
+
+  const sheetNames = (meta.data.sheets || [])
+    .map((sheet) => sheet.properties?.title || '')
+    .filter((title) => title.includes('_顧客名簿'));
+
+  console.log(`Found ${sheetNames.length} 顧客名簿 sheets`);
+
+  const range = "A1:D50";
+
+  const results: GoogleSheetValues[] = [];
+
+  for (const name of sheetNames) {
+    try {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: `'${name}'!${range}`,
+        majorDimension: 'ROWS',
+      });
+      const values = (res.data.values as (string | number | undefined)[][]) || [];
+      results.push({ sheetName: name, values });
+    } catch (error) {
+      console.error(`Error fetching sheet ${name}:`, error);
+    }
+  }
+
+  return results;
 }
