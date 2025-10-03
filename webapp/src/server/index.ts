@@ -12,9 +12,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve static frontend (dev: src/public, prod: dist/public)
-app.use(express.static(path.resolve(__dirname, '..', 'public')));
-app.use(express.static(path.resolve(__dirname, 'public')));
+// Serve static frontend
+if (process.env.NODE_ENV === 'production') {
+  // Vercel環境では、プロジェクトルートからの相対パスを使用
+  app.use(express.static(path.resolve(process.cwd(), 'webapp', 'src', 'public')));
+} else {
+  // 開発環境
+  app.use(express.static(path.resolve(__dirname, '..', 'public')));
+  app.use(express.static(path.resolve(__dirname, 'public')));
+}
 
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
@@ -60,16 +66,21 @@ type CustomerRow = {
 };
 
 function readCustomers(): CustomerRow[] {
-  const customersFolder = path.resolve(
-    __dirname,
-    '..', // server -> src
-    '..', // src -> webapp
-    '..', // webapp -> workspace root
-    '☆顧客フォルダ'
-  );
+  // Vercel環境では、プロジェクトルートからの相対パスを使用
+  const customersFolder = process.env.NODE_ENV === 'production' 
+    ? path.resolve(process.cwd(), '☆顧客フォルダ')
+    : path.resolve(
+        __dirname,
+        '..', // server -> src
+        '..', // src -> webapp
+        '..', // webapp -> workspace root
+        '☆顧客フォルダ'
+      );
 
   if (!fs.existsSync(customersFolder)) {
     console.log('Customers folder not found:', customersFolder);
+    console.log('Current working directory:', process.cwd());
+    console.log('__dirname:', __dirname);
     return [];
   }
 
@@ -208,8 +219,13 @@ app.get('/api/customers', (_req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Server listening on http://localhost:${PORT}`);
-});
+// Vercel環境では app.listen() は不要
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Server listening on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
