@@ -145,26 +145,27 @@ function readCustomers(): CustomerRow[] {
                           customerData[header] = dataRow[index];
                         }
                       });
-                    
-                    // フォルダ名から顧客情報を抽出
-                    const folderInfo = parseFolderName(folderName);
-                    
-                    // 日付フィールドを変換
-                    if (customerData['次回車検満期日'] && typeof customerData['次回車検満期日'] === 'number') {
-                      customerData['次回車検満期日'] = convertExcelDateToString(customerData['次回車検満期日']);
+                      
+                      // フォルダ名から顧客情報を抽出
+                      const folderInfo = parseFolderName(folderName);
+                      
+                      // 日付フィールドを変換
+                      if (customerData['次回車検満期日'] && typeof customerData['次回車検満期日'] === 'number') {
+                        customerData['次回車検満期日'] = convertExcelDateToString(customerData['次回車検満期日']);
+                      }
+                      if (customerData['初年度'] && typeof customerData['初年度'] === 'number') {
+                        customerData['初年度'] = convertExcelDateToString(customerData['初年度']);
+                      }
+                      
+                      // フォルダ情報を追加
+                      customerData['フォルダ名'] = folderName;
+                      customerData['顧客コード'] = folderInfo.code;
+                      customerData['顧客名'] = folderInfo.name;
+                      
+                      allCustomers.push(customerData);
                     }
-                    if (customerData['初年度'] && typeof customerData['初年度'] === 'number') {
-                      customerData['初年度'] = convertExcelDateToString(customerData['初年度']);
-                    }
-                    
-                    // フォルダ情報を追加
-                    customerData['フォルダ名'] = folderName;
-                    customerData['顧客コード'] = folderInfo.code;
-                    customerData['顧客名'] = folderInfo.name;
-                    
-                    allCustomers.push(customerData);
-                  }
-                });
+                  });
+                }
               }
             }
           }
