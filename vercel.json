@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "cd webapp && npm run build",
+  "outputDirectory": "webapp/dist",
   "builds": [
     {
       "src": "webapp/src/server/index.ts",
