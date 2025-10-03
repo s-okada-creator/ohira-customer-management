@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "builds": [
+    {
+      "src": "src/server/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["src/**", "../☆顧客フォルダ/**"],
+        "maxDuration": 30
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "src/server/index.ts"
+    }
+  ]
+}
