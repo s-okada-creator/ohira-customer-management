@@ -641,7 +641,7 @@
             .sender-postal {
               position: absolute;
               bottom: 18mm;
-              left: 12mm;
+              left: 10mm;
               display: flex;
               gap: 1mm;
               font-size: 11pt;
@@ -661,44 +661,47 @@
               height: 8mm;
               font-size: 10pt;
             }
-            .recipient-columns {
+            .recipient-address,
+            .recipient-name,
+            .recipient-sama {
               position: absolute;
-              top: 36mm;
-              right: 18mm;
-              display: flex;
-              flex-direction: row-reverse;
-              gap: 5mm;
-              align-items: flex-start;
-            }
-            .recipient-column {
               writing-mode: vertical-rl;
               text-orientation: mixed;
+            }
+            .recipient-address {
+              top: 36mm;
+              right: 17mm;
+              width: 18mm;
+              font-size: 12.2pt;
               letter-spacing: 2px;
               line-height: 1.85;
             }
-            .recipient-address {
-              font-size: 12pt;
-            }
             .recipient-address span {
               display: inline-block;
-              margin-bottom: 1.5mm;
+              margin-bottom: 1.6mm;
             }
             .recipient-name {
-              font-size: 18pt;
+              top: 35mm;
+              right: 35mm;
+              width: 12mm;
+              font-size: 20pt;
               font-weight: 600;
-              letter-spacing: 3px;
+              letter-spacing: 4px;
+              line-height: 2;
+              text-align: center;
             }
             .recipient-name span {
               display: inline-block;
               margin-bottom: 2mm;
             }
             .recipient-sama {
-              font-size: 15pt;
+              top: 35mm;
+              right: 46mm;
+              width: 10mm;
+              font-size: 18pt;
               font-weight: 600;
-            }
-            .recipient-sama span {
-              display: inline-block;
-              margin-top: 4mm;
+              letter-spacing: 3px;
+              text-align: center;
             }
             .sender-block {
               position: absolute;
@@ -733,8 +736,8 @@
       const senderPostal = SENDER_INFO.postalCode ? `<div class="sender-postal">${renderPostalDigits(SENDER_INFO.postalCode, true)}</div>` : '';
       const addressLines = [address1, address2].filter(Boolean).map(line => `<span>${formatVerticalText(line)}</span>`).join('');
       const senderLines = SENDER_INFO.lines.map(line => `<span>${formatVerticalText(line)}</span>`).join('');
-      const nameColumn = name ? `<div class="recipient-name recipient-column">${renderNameColumn(name)}</div>` : '';
-      const samaColumn = `<div class="recipient-sama recipient-column"><span>様</span></div>`;
+      const nameColumn = name ? `<div class="recipient-name">${renderNameColumn(name)}</div>` : '';
+      const samaColumn = `<div class="recipient-sama">様</div>`;
       const stampBox = '<div class="stamp-box">切手</div>';
 
       return `
@@ -742,11 +745,9 @@
           ${stampBox}
           ${postalElement}
           ${senderPostal}
-          <div class="recipient-columns">
-            <div class="recipient-address recipient-column">${addressLines}</div>
-            ${nameColumn}
-            ${samaColumn}
-          </div>
+          <div class="recipient-address">${addressLines}</div>
+          ${nameColumn}
+          ${samaColumn}
           <div class="sender-block">
             ${senderLines}
           </div>
@@ -756,7 +757,14 @@
 
     function renderPostalDigits(originalZip, isSender = false) {
       const digits = originalZip.replace(/[^0-9]/g, '').slice(0, 7);
-      const padded = isSender ? digits.padStart(7, ' ') : digits.padEnd(7, ' ');
+      if (!digits) {
+        return Array.from({ length: 7 }, () => '<span class="postal-box"></span>').join('');
+      }
+
+      const padded = isSender
+        ? digits.padStart(7, ' ')
+        : digits.padEnd(7, ' ');
+
       return padded.split('').map(d => `<span class="postal-box">${d.trim() ? d : ''}</span>`).join('');
     }
 
