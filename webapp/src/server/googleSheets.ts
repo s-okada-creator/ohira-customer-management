@@ -6,6 +6,9 @@ export interface GoogleSheetValues {
   values: (string | number | undefined)[][];
 }
 
+const BATCH_SIZE = 40; // 40 ranges ≒ 40 sheets / request (well under quota limits)
+const RANGE = 'A1:D50';
+
 export async function getCustomerSheetValues(): Promise<GoogleSheetValues[]> {
   const apiKey = process.env.GOOGLE_SHEETS_API_KEY;
   const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
@@ -29,23 +32,33 @@ export async function getCustomerSheetValues(): Promise<GoogleSheetValues[]> {
 
   console.log(`Found ${sheetNames.length} 顧客名簿 sheets`);
 
-  const range = "A1:D50";
-
   const results: GoogleSheetValues[] = [];
 
-  for (const name of sheetNames) {
+  for (let i = 0; i < sheetNames.length; i += BATCH_SIZE) {
+    const chunkNames = sheetNames.slice(i, i + BATCH_SIZE);
+    const ranges = chunkNames.map((name) => `'${escapeSheetName(name)}'!${RANGE}`);
+
     try {
-      const res = await sheets.spreadsheets.values.get({
+      const response = await sheets.spreadsheets.values.batchGet({
         spreadsheetId,
-        range: `'${name}'!${range}`,
+        ranges,
         majorDimension: 'ROWS',
       });
-      const values = (res.data.values as (string | number | undefined)[][]) || [];
-      results.push({ sheetName: name, values });
+
+      const valueRanges = response.data.valueRanges || [];
+
+      chunkNames.forEach((name, idx) => {
+        const values = (valueRanges[idx]?.values as (string | number | undefined)[][]) || [];
+        results.push({ sheetName: name, values });
+      });
     } catch (error) {
-      console.error(`Error fetching sheet ${name}:`, error);
+      console.error('Error fetching sheet chunk:', error);
     }
   }
 
   return results;
+}
+
+function escapeSheetName(name: string): string {
+  return name.replace(/'/g, "''");
 }
