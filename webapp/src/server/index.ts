@@ -85,15 +85,14 @@ function handleField_(customer: CustomerRow, label: string, value: unknown) {
   let stringValue = '';
   if (value == null || value === '') {
     stringValue = '';
-  } else if (key === '次回車検満期日' && typeof value === 'number') {
-    stringValue = convertExcelDateToString(value);
   } else {
-    stringValue = String(value);
-  }
-
-  if (key === '初年度') {
-    customer[key] = stringValue;
-    return;
+    if (key === '次回車検満期日') {
+      stringValue = normalizeExcelDate(value);
+    } else if (key === '初年度') {
+      stringValue = normalizeExcelDate(value, true);
+    } else {
+      stringValue = String(value);
+    }
   }
 
   if (key === '次回車検満期日') {
@@ -201,6 +200,66 @@ function convertExcelDateToString(excelDate: number): string {
   const month = (actualDate.getMonth() + 1).toString().padStart(2, '0');
   const day = actualDate.getDate().toString().padStart(2, '0');
   
+  return `${year}/${month}/${day}`;
+}
+
+function normalizeExcelDate(value: unknown, isFirstRegistration = false): string {
+  if (value == null || value === '') return '';
+
+  if (typeof value === 'number') {
+    return convertExcelDateToString(value);
+  }
+
+  if (value instanceof Date) {
+    return formatDate(value);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+
+    // Already formatted YYYY/MM/DD or YYYY-MM-DD
+    if (/^\d{4}[\.\/\-]\d{1,2}[\.\/\-]\d{1,2}$/.test(trimmed)) {
+      const d = new Date(trimmed.replace(/[-.]/g, '/'));
+      if (!Number.isNaN(d.getTime())) return formatDate(d);
+    }
+
+    // Pure numeric string
+    if (/^\d+$/.test(trimmed)) {
+      const num = Number(trimmed);
+      if (!Number.isNaN(num)) {
+        // Treat up to 5 digits (or < 60000) as Excel serial
+        if (trimmed.length <= 5 || num < 60000) {
+          return convertExcelDateToString(num);
+        }
+        // Treat 8 digit numbers as YYYYMMDD
+        if (trimmed.length === 8) {
+          const year = Number(trimmed.slice(0, 4));
+          const month = Number(trimmed.slice(4, 6));
+          const day = Number(trimmed.slice(6, 8));
+          if (!Number.isNaN(year) && !Number.isNaN(month) && !Number.isNaN(day)) {
+            const d = new Date(year, month - 1, day);
+            if (!Number.isNaN(d.getTime())) return formatDate(d);
+          }
+        }
+      }
+    }
+
+    // Japanese era strings etc. are returned as-is for 初年度
+    if (isFirstRegistration) {
+      return trimmed;
+    }
+
+    return trimmed;
+  }
+
+  return '';
+}
+
+function formatDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
   return `${year}/${month}/${day}`;
 }
 
