@@ -641,7 +641,7 @@
             .sender-postal {
               position: absolute;
               bottom: 18mm;
-              left: 10mm;
+              left: 12mm;
               display: flex;
               gap: 1mm;
               font-size: 11pt;
@@ -661,44 +661,44 @@
               height: 8mm;
               font-size: 10pt;
             }
-            .address-columns {
+            .recipient-columns {
               position: absolute;
-              top: 38mm;
+              top: 36mm;
               right: 18mm;
               display: flex;
-              gap: 6mm;
+              flex-direction: row-reverse;
+              gap: 5mm;
+              align-items: flex-start;
             }
-            .address-column,
-            .name-column,
-            .sama-column {
+            .recipient-column {
               writing-mode: vertical-rl;
               text-orientation: mixed;
               letter-spacing: 2px;
-              line-height: 1.8;
+              line-height: 1.85;
             }
-            .address-column {
-              font-size: 12.5pt;
+            .recipient-address {
+              font-size: 12pt;
             }
-            .address-column span {
+            .recipient-address span {
+              display: inline-block;
+              margin-bottom: 1.5mm;
+            }
+            .recipient-name {
+              font-size: 18pt;
+              font-weight: 600;
+              letter-spacing: 3px;
+            }
+            .recipient-name span {
               display: inline-block;
               margin-bottom: 2mm;
             }
-            .name-column {
-              font-size: 18pt;
-              font-weight: bold;
-              letter-spacing: 3px;
-            }
-            .name-column span {
-              display: inline-block;
-              margin-bottom: 3mm;
-            }
-            .sama-column {
+            .recipient-sama {
               font-size: 15pt;
-              font-weight: bold;
+              font-weight: 600;
             }
-            .sama-column span {
+            .recipient-sama span {
               display: inline-block;
-              margin-top: 10mm;
+              margin-top: 4mm;
             }
             .sender-block {
               position: absolute;
@@ -733,8 +733,8 @@
       const senderPostal = SENDER_INFO.postalCode ? `<div class="sender-postal">${renderPostalDigits(SENDER_INFO.postalCode, true)}</div>` : '';
       const addressLines = [address1, address2].filter(Boolean).map(line => `<span>${formatVerticalText(line)}</span>`).join('');
       const senderLines = SENDER_INFO.lines.map(line => `<span>${formatVerticalText(line)}</span>`).join('');
-      const nameColumn = name ? `<div class="name-column">${renderNameColumn(name)}</div>` : '';
-      const samaColumn = `<div class="sama-column"><span>様</span></div>`;
+      const nameColumn = name ? `<div class="recipient-name recipient-column">${renderNameColumn(name)}</div>` : '';
+      const samaColumn = `<div class="recipient-sama recipient-column"><span>様</span></div>`;
       const stampBox = '<div class="stamp-box">切手</div>';
 
       return `
@@ -742,8 +742,8 @@
           ${stampBox}
           ${postalElement}
           ${senderPostal}
-          <div class="address-columns">
-            <div class="address-column">${addressLines}</div>
+          <div class="recipient-columns">
+            <div class="recipient-address recipient-column">${addressLines}</div>
             ${nameColumn}
             ${samaColumn}
           </div>
@@ -755,8 +755,9 @@
     }
 
     function renderPostalDigits(originalZip, isSender = false) {
-      const digits = originalZip.replace(/[^0-9]/g, '').padEnd(7, ' ');
-      return digits.slice(0, 7).split('').map(d => `<span class="postal-box">${d.trim() ? d : ''}</span>`).join('');
+      const digits = originalZip.replace(/[^0-9]/g, '').slice(0, 7);
+      const padded = isSender ? digits.padStart(7, ' ') : digits.padEnd(7, ' ');
+      return padded.split('').map(d => `<span class="postal-box">${d.trim() ? d : ''}</span>`).join('');
     }
 
     function renderNameColumn(name) {
