@@ -274,6 +274,7 @@
       <div class="contact-options">
         <button class="contact-btn email" id="sendEmail">メール送信</button>
         <button class="contact-btn document" id="generateDocument">案内文書作成</button>
+        <button class="contact-btn document" id="printAddresses">宛名印刷</button>
         <button class="contact-btn print" id="printList">一覧印刷</button>
       </div>
     </div>
@@ -320,6 +321,10 @@
     let sortDirection = 'asc';
     let currentMode = 'all'; // 'all' or 'inspection'
     const fmt = (v) => v==null? '': String(v);
+    const SENDER_INFO = {
+      postalCode: '751-0804',
+      lines: ['山口県下関市楠乃３丁目23-33', '大平自動車商会', 'TEL: 083-000-0000']
+    };
     const normalize = (s) => fmt(s).toLowerCase();
 
     function render(rows){
@@ -523,6 +528,7 @@
       const sendEmailBtn = document.getElementById('sendEmail');
       const generateDocBtn = document.getElementById('generateDocument');
       const printBtn = document.getElementById('printList');
+      const printAddressesBtn = document.getElementById('printAddresses');
       
       sendEmailBtn.addEventListener('click', () => {
         if (inspectionRows.length === 0) {
@@ -540,6 +546,14 @@
         generateInspectionDocuments();
       });
       
+      printAddressesBtn.addEventListener('click', () => {
+        if (inspectionRows.length === 0) {
+          alert('車検対象顧客がいません。');
+          return;
+        }
+        printPostcardAddresses();
+      });
+
       printBtn.addEventListener('click', () => {
         if (inspectionRows.length === 0) {
           alert('車検対象顧客がいません。');
@@ -561,6 +575,204 @@
         return;
       }
       window.open(link.href, '_blank');
+    }
+
+    function printPostcardAddresses() {
+      const content = generateAddressPostcards();
+      const win = window.open('', '_blank');
+      if (!win) {
+        alert('ポップアップがブロックされました。許可してください。');
+        return;
+      }
+      win.document.write(content);
+      win.document.close();
+      win.focus();
+      win.print();
+    }
+
+    function generateAddressPostcards() {
+      return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>はがき宛名</title>
+          <style>
+            @page {
+              size: 100mm 148mm;
+              margin: 0;
+            }
+            body {
+              margin: 0;
+              padding: 0;
+              font-family: 'Hiragino Sans', 'Yu Gothic', '游ゴシック', sans-serif;
+              background: #f0f0f0;
+            }
+            .sheet {
+              width: 100mm;
+              height: 148mm;
+              background: white;
+              margin: 0 auto;
+              page-break-after: always;
+              position: relative;
+              box-sizing: border-box;
+            }
+            .stamp-box {
+              position: absolute;
+              top: 12mm;
+              left: 10mm;
+              width: 18mm;
+              height: 23mm;
+              border: 0.3mm solid #333;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 12pt;
+              writing-mode: vertical-rl;
+            }
+            .recipient-postal {
+              position: absolute;
+              top: 12mm;
+              left: 50%;
+              transform: translateX(-50%);
+              display: flex;
+              gap: 1.2mm;
+            }
+            .sender-postal {
+              position: absolute;
+              bottom: 18mm;
+              left: 10mm;
+              display: flex;
+              gap: 1mm;
+              font-size: 11pt;
+            }
+            .postal-box {
+              width: 7mm;
+              height: 10mm;
+              border: 0.3mm solid #333;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 12pt;
+              font-weight: bold;
+            }
+            .sender-postal .postal-box {
+              width: 6mm;
+              height: 8mm;
+              font-size: 10pt;
+            }
+            .address-columns {
+              position: absolute;
+              top: 38mm;
+              right: 18mm;
+              display: flex;
+              gap: 6mm;
+            }
+            .address-column,
+            .name-column,
+            .sama-column {
+              writing-mode: vertical-rl;
+              text-orientation: mixed;
+              letter-spacing: 2px;
+              line-height: 1.8;
+            }
+            .address-column {
+              font-size: 12.5pt;
+            }
+            .address-column span {
+              display: inline-block;
+              margin-bottom: 2mm;
+            }
+            .name-column {
+              font-size: 18pt;
+              font-weight: bold;
+              letter-spacing: 3px;
+            }
+            .name-column span {
+              display: inline-block;
+              margin-bottom: 3mm;
+            }
+            .sama-column {
+              font-size: 15pt;
+              font-weight: bold;
+            }
+            .sama-column span {
+              display: inline-block;
+              margin-top: 10mm;
+            }
+            .sender-block {
+              position: absolute;
+              bottom: 22mm;
+              left: 8mm;
+              writing-mode: vertical-rl;
+              text-orientation: mixed;
+              font-size: 11pt;
+              line-height: 1.6;
+              letter-spacing: 1px;
+            }
+            .sender-block span {
+              display: inline-block;
+              margin-bottom: 1.5mm;
+            }
+          </style>
+        </head>
+        <body>
+          ${inspectionRows.map(row => renderAddressCard(row)).join('')}
+        </body>
+        </html>
+      `;
+    }
+
+    function renderAddressCard(row) {
+      const zip = fmt(row['自宅郵便番号']).replace(/[^0-9]/g, '');
+      const address1 = fmt(row['自宅住所1']);
+      const address2 = fmt(row['自宅住所2']);
+      const name = fmt(row['名　前']) || fmt(row['顧客名']) || fmt(row['顧客名（フォルダ）']);
+
+      const postalElement = zip ? `<div class="recipient-postal">${renderPostalDigits(zip)}</div>` : '';
+      const senderPostal = SENDER_INFO.postalCode ? `<div class="sender-postal">${renderPostalDigits(SENDER_INFO.postalCode, true)}</div>` : '';
+      const addressLines = [address1, address2].filter(Boolean).map(line => `<span>${formatVerticalText(line)}</span>`).join('');
+      const senderLines = SENDER_INFO.lines.map(line => `<span>${formatVerticalText(line)}</span>`).join('');
+      const nameColumn = name ? `<div class="name-column">${renderNameColumn(name)}</div>` : '';
+      const samaColumn = `<div class="sama-column"><span>様</span></div>`;
+      const stampBox = '<div class="stamp-box">切手</div>';
+
+      return `
+        <div class="sheet">
+          ${stampBox}
+          ${postalElement}
+          ${senderPostal}
+          <div class="address-columns">
+            <div class="address-column">${addressLines}</div>
+            ${nameColumn}
+            ${samaColumn}
+          </div>
+          <div class="sender-block">
+            ${senderLines}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderPostalDigits(originalZip, isSender = false) {
+      const digits = originalZip.replace(/[^0-9]/g, '').padEnd(7, ' ');
+      return digits.slice(0, 7).split('').map(d => `<span class="postal-box">${d.trim() ? d : ''}</span>`).join('');
+    }
+
+    function renderNameColumn(name) {
+      const normalized = formatVerticalText(name);
+      return Array.from(normalized.replace(/\s/g, '')).map(ch => `<span>${ch}</span>`).join('');
+    }
+
+    function formatVerticalText(text) {
+      if (!text) return '';
+      return toFullWidth(text).replace(/-/g, '－');
+    }
+
+    function toFullWidth(str) {
+      return str.replace(/[!-~]/g, (ch) =>
+        String.fromCharCode(ch.charCodeAt(0) + 0xFEE0)
+      ).replace(/ /g, '　');
     }
 
     function generatePostcardDocuments() {
@@ -787,6 +999,6 @@
     setupBulkContact();
     load();
   </script>
-  <a id="otokuPdf" href="/otoku-de-anshin.pdf" target="_blank" style="display:none"></a>
+  <a id="otokuPdf" href="/お得で安心♪.pdf" target="_blank" style="display:none"></a>
 </body>
 </html>
