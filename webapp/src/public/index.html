@@ -555,21 +555,12 @@
     }
 
     function generateInspectionDocuments() {
-      const today = new Date();
-      const todayStr = today.toLocaleDateString('ja-JP');
-      
-      // はがきサイズ（100mm × 148mm）の案内文書を生成
-      const documentContent = generatePostcardDocuments();
-      
-      // 新しいウィンドウで案内文書を表示
-      const docWindow = window.open('', '_blank');
-      docWindow.document.write(documentContent);
-      docWindow.document.close();
-      
-      // 印刷ダイアログを表示
-      setTimeout(() => {
-        docWindow.print();
-      }, 500);
+      const link = document.getElementById('otokuPdf');
+      if (!link) {
+        alert('案内文書のテンプレートが見つかりません。');
+        return;
+      }
+      window.open(link.href, '_blank');
     }
 
     function generatePostcardDocuments() {
@@ -796,5 +787,6 @@
     setupBulkContact();
     load();
   </script>
+  <a id="otokuPdf" href="/otoku-de-anshin.pdf" target="_blank" style="display:none"></a>
 </body>
 </html>
