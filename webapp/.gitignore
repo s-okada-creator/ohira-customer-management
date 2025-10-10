@@ -1,5 +1,5 @@
 .vercel
 .env
 .env*.local
-*.xlsx
-*.pdf
+node_modules
+dist
