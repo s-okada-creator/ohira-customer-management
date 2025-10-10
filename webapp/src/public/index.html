@@ -551,7 +551,9 @@
           alert('車検対象顧客がいません。');
           return;
         }
-        printPostcardAddresses();
+        
+        // プレビューを直接表示（プレビュー内にPDFダウンロードボタンあり）
+        showPostcardPreview();
       });
 
       printBtn.addEventListener('click', () => {
@@ -577,8 +579,8 @@
       window.open(link.href, '_blank');
     }
 
-    function printPostcardAddresses() {
-      const content = generateAddressPostcards();
+    function showPostcardPreview() {
+      const content = generateAddressPostcardsWithControls();
       const win = window.open('', '_blank');
       if (!win) {
         alert('ポップアップがブロックされました。許可してください。');
@@ -587,9 +589,182 @@
       win.document.write(content);
       win.document.close();
       win.focus();
-      win.print();
+    }
+    
+    // 後方互換性のため残す
+    function printPostcardAddresses() {
+      showPostcardPreview();
     }
 
+    async function downloadHagakiPDF() {
+      const btn = document.getElementById('printAddresses');
+      const originalText = btn.textContent;
+
+      try {
+        // 車検対象顧客のIDを取得
+        const customerIds = inspectionRows.map(row => row['顧客番号'] || 'all');
+
+        // ローディング表示
+        btn.textContent = '⏳ PDF生成中...';
+        btn.disabled = true;
+
+        // API呼び出し（相対パス使用）
+        const response = await fetch('/api/generate-hagaki-pdf', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ customerIds }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'PDF生成に失敗しました');
+        }
+
+        // PDFをダウンロード
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'hagaki_' + new Date().toISOString().slice(0, 10) + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+
+        // 成功表示
+        btn.textContent = '✓ ダウンロード完了';
+        setTimeout(() => {
+          btn.textContent = originalText;
+        }, 2000);
+      } catch (error) {
+        console.error('PDF生成エラー:', error);
+        alert('PDF生成に失敗しました: ' + error.message);
+        btn.textContent = originalText;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    function generateAddressPostcardsWithControls() {
+      const baseHTML = generateAddressPostcards();
+      const customerCount = inspectionRows.length;
+      const customerIdsJSON = JSON.stringify(inspectionRows.map(r => r['顧客番号']));
+      
+      // コントロールパネルのCSS
+      const controlCSS = '<\/style><style>' +
+          '.control-panel {' +
+          '  position: fixed;' +
+          '  top: 0;' +
+          '  left: 0;' +
+          '  right: 0;' +
+          '  background: white;' +
+          '  border-bottom: 2px solid #007bff;' +
+          '  padding: 15px 20px;' +
+          '  box-shadow: 0 2px 8px rgba(0,0,0,0.1);' +
+          '  z-index: 1000;' +
+          '  display: flex;' +
+          '  justify-content: space-between;' +
+          '  align-items: center;' +
+          '}' +
+          '.control-panel h2 {' +
+          '  margin: 0;' +
+          '  font-size: 18px;' +
+          '  color: #333;' +
+          '}' +
+          '.control-buttons {' +
+          '  display: flex;' +
+          '  gap: 12px;' +
+          '}' +
+          '.control-btn {' +
+          '  padding: 10px 20px;' +
+          '  border: none;' +
+          '  border-radius: 6px;' +
+          '  font-size: 14px;' +
+          '  font-weight: 500;' +
+          '  cursor: pointer;' +
+          '  transition: all 0.2s;' +
+          '}' +
+          '.control-btn.primary {' +
+          '  background: #007bff;' +
+          '  color: white;' +
+          '}' +
+          '.control-btn.primary:hover {' +
+          '  background: #0056b3;' +
+          '}' +
+          '.control-btn.secondary {' +
+          '  background: #6c757d;' +
+          '  color: white;' +
+          '}' +
+          '.control-btn.secondary:hover {' +
+          '  background: #545b62;' +
+          '}' +
+          'body {' +
+          '  padding-top: 70px !important;' +
+          '}' +
+          '@media print {' +
+          '  .control-panel {' +
+          '    display: none !important;' +
+          '  }' +
+          '  body {' +
+          '    padding-top: 0 !important;' +
+          '  }' +
+          '}' +
+          '<\/style><\/head>';
+      
+      // コントロールパネルのHTML
+      const controlPanel = '<body>' +
+          '<div class="control-panel">' +
+          '<h2>はがき宛名プレビュー（' + customerCount + '件）<\/h2>' +
+          '<div class="control-buttons">' +
+          '<button class="control-btn primary" onclick="downloadPDF()">PDFダウンロード<\/button>' +
+          '<button class="control-btn secondary" onclick="window.print()">印刷<\/button>' +
+          '<\/div>' +
+          '<\/div>' +
+          '<script>' +
+          'async function downloadPDF() {' +
+          '  const btn = document.querySelector(".control-btn.primary");' +
+          '  const originalText = btn.textContent;' +
+          '  try {' +
+          '    const customerIds = ' + customerIdsJSON + ';' +
+          '    btn.textContent = "⏳ PDF生成中...";' +
+          '    btn.disabled = true;' +
+          '    const response = await fetch("/api/generate-hagaki-pdf", {' +
+          '      method: "POST",' +
+          '      headers: { "Content-Type": "application/json" },' +
+          '      body: JSON.stringify({ customerIds })' +
+          '    });' +
+          '    if (!response.ok) {' +
+          '      const errorData = await response.json().catch(() => ({}));' +
+          '      throw new Error(errorData.error || "PDF生成に失敗しました");' +
+          '    }' +
+          '    const blob = await response.blob();' +
+          '    const url = window.URL.createObjectURL(blob);' +
+          '    const a = document.createElement("a");' +
+          '    a.href = url;' +
+          '    a.download = "hagaki_" + new Date().toISOString().slice(0, 10) + ".pdf";' +
+          '    document.body.appendChild(a);' +
+          '    a.click();' +
+          '    a.remove();' +
+          '    window.URL.revokeObjectURL(url);' +
+          '    btn.textContent = "✓ ダウンロード完了";' +
+          '    setTimeout(() => {' +
+          '      btn.textContent = originalText;' +
+          '    }, 2000);' +
+          '  } catch (error) {' +
+          '    console.error("PDF generation error:", error);' +
+          '    alert("PDF生成に失敗しました: " + error.message);' +
+          '    btn.textContent = originalText;' +
+          '  } finally {' +
+          '    btn.disabled = false;' +
+          '  }' +
+          '}' +
+          '<\/script>';
+
+      return baseHTML.replace('<\/head>', controlCSS).replace('<body>', controlPanel);
+    }
+    
     function generateAddressPostcards() {
       return `
         <!DOCTYPE html>
@@ -605,7 +780,7 @@
             body {
               margin: 0;
               padding: 0;
-              font-family: 'Hiragino Sans', 'Yu Gothic', '游ゴシック', sans-serif;
+              font-family: 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', '游ゴシック', sans-serif;
               background: #f0f0f0;
             }
             .sheet {
@@ -617,105 +792,136 @@
               position: relative;
               box-sizing: border-box;
             }
+            /* 切手貼付欄 */
             .stamp-box {
               position: absolute;
-              top: 12mm;
-              left: 10mm;
-              width: 18mm;
-              height: 23mm;
-              border: 0.3mm solid #333;
+              top: 8mm;
+              left: 8mm;
+              width: 20mm;
+              height: 25mm;
+              border: 1.5px dashed #333;
+              background: transparent;
               display: flex;
               align-items: center;
               justify-content: center;
-              font-size: 12pt;
+              font-size: 9pt;
+              color: #333;
               writing-mode: vertical-rl;
+              text-orientation: upright;
+              letter-spacing: 1px;
             }
+            /* 受取人郵便番号欄 */
             .recipient-postal {
               position: absolute;
-              top: 12mm;
-              left: 50%;
-              transform: translateX(-50%);
-              display: flex;
-              gap: 1.2mm;
-            }
-            .sender-postal {
-              position: absolute;
-              bottom: 18mm;
-              left: 10mm;
+              top: 10mm;
+              right: 8mm;
               display: flex;
               gap: 1mm;
-              font-size: 11pt;
             }
             .postal-box {
-              width: 7mm;
-              height: 10mm;
-              border: 0.3mm solid #333;
+              width: 5.5mm;
+              height: 7mm;
+              border: 1.5px solid #D32F2F;
               display: flex;
               align-items: center;
               justify-content: center;
-              font-size: 12pt;
+              font-size: 14pt;
               font-weight: bold;
+              color: black;
+              background: white;
+              font-family: "Courier New", monospace;
             }
-            .sender-postal .postal-box {
-              width: 6mm;
-              height: 8mm;
-              font-size: 10pt;
+            .postal-separator {
+              width: 2mm;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 16pt;
+              color: #D32F2F;
             }
-            .recipient-address,
-            .recipient-name,
-            .recipient-sama {
-              position: absolute;
-              writing-mode: vertical-rl;
-              text-orientation: mixed;
-              letter-spacing: 2px;
-            }
-            .recipient-address {
-              top: 40mm;
-              right: 15mm;
-              width: 18mm;
-              font-size: 12pt;
-              line-height: 1.8;
-            }
-            .recipient-address span {
-              display: inline-block;
+            /* 差出人郵便番号 */
+            .sender-postal {
+              display: flex;
+              gap: 1mm;
               margin-bottom: 2mm;
             }
-            .recipient-name {
-              top: 38mm;
-              right: 33mm;
-              width: 14mm;
-              font-size: 19pt;
-              font-weight: 600;
-              letter-spacing: 4px;
-              line-height: 1.95;
-              text-align: center;
+            .sender-postal-box {
+              width: 4mm;
+              height: 5mm;
+              border: 1px dashed #D32F2F;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 9pt;
+              color: black;
+              background: white;
+              font-family: "Courier New", monospace;
             }
-            .recipient-name span {
-              display: inline-block;
-              margin-bottom: 2.2mm;
-            }
-            .recipient-sama {
-              top: 38mm;
-              right: 47mm;
-              width: 8mm;
-              font-size: 17pt;
-              font-weight: 600;
-              letter-spacing: 3px;
-              text-align: center;
-            }
-            .sender-block {
+            /* 宛名エリア */
+            .recipient-address {
               position: absolute;
-              bottom: 18mm;
-              left: 14mm;
+              top: 25mm;
+              right: 8mm;
+              font-size: 12pt;
+              color: black;
               writing-mode: vertical-rl;
-              text-orientation: mixed;
-              font-size: 11pt;
+              text-orientation: upright;
               line-height: 1.6;
               letter-spacing: 1px;
             }
-            .sender-block span {
+            .recipient-address span {
               display: inline-block;
+              margin-left: 5mm;
+            }
+            .recipient-name {
+              position: absolute;
+              top: 35mm;
+              right: 45mm;
+              font-size: 24pt;
+              font-weight: bold;
+              color: black;
+              writing-mode: vertical-rl;
+              text-orientation: upright;
+              line-height: 1.4;
+              letter-spacing: 3px;
+            }
+            /* 差出人エリア */
+            .sender-block {
+              position: absolute;
+              bottom: 8mm;
+              left: 8mm;
+              width: 70mm;
+            }
+            .sender-info {
+              display: flex;
+              flex-direction: row;
+              gap: 3mm;
+              margin-bottom: 4mm;
+            }
+            .sender-line {
+              font-size: 10pt;
+              color: black;
+              writing-mode: vertical-rl;
+              text-orientation: upright;
+              letter-spacing: 1px;
+              line-height: 1.4;
+            }
+            .sender-postal {
+              display: flex;
+              gap: 1mm;
               margin-bottom: 2mm;
+            }
+            .sender-postal-box {
+              width: 4mm;
+              height: 5mm;
+              border: 1px dashed #D32F2F;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 9pt;
+              color: black;
+              background: white;
+              font-family: "Courier New", monospace;
             }
           </style>
         </head>
@@ -727,29 +933,78 @@
     }
 
     function renderAddressCard(row) {
-      const zip = fmt(row['自宅郵便番号']).replace(/[^0-9]/g, '');
+      // 受取人情報の取得
+      const rawZip = fmt(row['自宅郵便番号']);
       const address1 = fmt(row['自宅住所1']);
       const address2 = fmt(row['自宅住所2']);
       const name = fmt(row['名　前']) || fmt(row['顧客名']) || fmt(row['顧客名（フォルダ）']);
 
-      const postalElement = zip ? `<div class="recipient-postal">${renderPostalDigits(zip)}</div>` : '';
-      const senderPostal = SENDER_INFO.postalCode ? `<div class="sender-postal">${renderPostalDigits(SENDER_INFO.postalCode, true)}</div>` : '';
-      const addressLines = [address1, address2].filter(Boolean).map(line => `<span>${formatVerticalText(line)}</span>`).join('');
-      const senderLines = SENDER_INFO.lines.map(line => `<span>${formatVerticalText(line)}</span>`).join('');
-      const nameColumn = name ? `<div class="recipient-name">${renderNameColumn(name)}</div>` : '';
-      const samaColumn = `<div class="recipient-sama">様</div>`;
-      const stampBox = '<div class="stamp-box">切手</div>';
+      // 郵便番号の整形
+      const formattedZip = formatPostalCode(rawZip);
+      const zipDigits = formattedZip.replace(/[^0-9]/g, '');
+
+      // 住所の処理
+      // DBで既に2行に分かれている場合はそのまま使用
+      // 1行しかない場合は自動分割
+      let addressLine1, addressLine2;
+      
+      if (address1 && address2) {
+        // 既に2行に分かれている
+        addressLine1 = address1;
+        addressLine2 = address2;
+      } else if (address1 && !address2) {
+        // 1行しかない場合は自動分割
+        const split = splitAddress(address1);
+        addressLine1 = split.line1;
+        addressLine2 = split.line2;
+      } else {
+        addressLine1 = '';
+        addressLine2 = '';
+      }
+
+      // 縦書き用に変換
+      const verticalAddress1 = convertToVerticalText(addressLine1);
+      const verticalAddress2 = convertToVerticalText(addressLine2);
+      const verticalName = convertToVerticalText(name);
+
+      // HTML要素の生成
+      const postalElement = zipDigits ? `<div class="recipient-postal">${renderPostalDigits(zipDigits)}</div>` : '';
+      const senderZip = formatPostalCode(SENDER_INFO.postalCode);
+      const senderZipDigits = senderZip.replace(/[^0-9]/g, '');
+      const senderPostal = senderZipDigits ? `<div class="sender-postal">${renderPostalDigits(senderZipDigits, true)}</div>` : '';
+      
+      // 住所は複数行に分けて表示（空行は除外）
+      const addressLines = [verticalAddress1, verticalAddress2]
+        .filter(Boolean)
+        .map(line => `<span>${line}</span>`)
+        .join('');
+      
+      // 差出人情報を生成（縦書き用に変換）
+      const senderAddress = convertToVerticalText(SENDER_INFO.lines[0] || '');
+      const senderName = convertToVerticalText(SENDER_INFO.lines[1] || '');
+      const senderContact = convertToVerticalText(SENDER_INFO.lines[2] || '');
+      
+      // 右から順に：住所、名前、電話番号（縦書きなので配列を逆順にする）
+      const senderInfo = [senderContact, senderName, senderAddress]
+        .filter(Boolean)
+        .map(line => `<div class="sender-line">${line}</div>`)
+        .join('');
+      
+      // 名前と「様」を1行にまとめる
+      const nameWithHonorific = verticalName ? `<div class="recipient-name">${verticalName}様</div>` : '';
+      
+      // 切手貼付欄
+      const stampBox = `<div class="stamp-box">切手貼付位置</div>`;
 
       return `
         <div class="sheet">
           ${stampBox}
           ${postalElement}
-          ${senderPostal}
           <div class="recipient-address">${addressLines}</div>
-          ${nameColumn}
-          ${samaColumn}
+          ${nameWithHonorific}
           <div class="sender-block">
-            ${senderLines}
+            <div class="sender-info">${senderInfo}</div>
+            ${senderPostal}
           </div>
         </div>
       `;
@@ -757,28 +1012,113 @@
 
     function renderPostalDigits(originalZip, isSender = false) {
       const digits = originalZip.replace(/[^0-9]/g, '').slice(0, 7);
-      if (!digits) {
-        return Array.from({ length: 7 }, () => '<span class="postal-box"></span>').join('');
+      const padded = digits.padEnd(7, ' ');
+      
+      if (isSender) {
+        // 差出人郵便番号（点線枠、小さめ）
+        return padded.split('').map((d, i) => {
+          if (i === 3) {
+            return `<div style="width: 2mm;"></div><span class="sender-postal-box">${d.trim() ? d : ''}</span>`;
+          }
+          return `<span class="sender-postal-box">${d.trim() ? d : ''}</span>`;
+        }).join('');
+      } else {
+        // 受取人郵便番号（赤枠、ハイフン付き）
+        return padded.split('').map((d, i) => {
+          if (i === 3) {
+            return `<div class="postal-separator">ー</div><span class="postal-box">${d.trim() ? d : ''}</span>`;
+          }
+          return `<span class="postal-box">${d.trim() ? d : ''}</span>`;
+        }).join('');
       }
-
-      const padded = isSender
-        ? digits.padStart(7, ' ')
-        : digits.padEnd(7, ' ');
-
-      return padded.split('').map(d => `<span class="postal-box">${d.trim() ? d : ''}</span>`).join('');
     }
 
     function renderNameColumn(name) {
-      const normalized = formatVerticalText(name);
-      return Array.from(normalized.replace(/\s/g, '')).map(ch => `<span>${ch}</span>`).join('');
+      // 既に変換済みの場合もあるため、スペースを除去して1文字ずつspanで囲む
+      const cleaned = name.replace(/[\s　]/g, ''); // 全角・半角スペースを除去
+      return Array.from(cleaned).map(ch => `<span>${ch}</span>`).join('');
     }
 
-    function formatVerticalText(text) {
+    // ========================================
+    // はがき宛名用ヘルパー関数群
+    // ========================================
+
+    /**
+     * 郵便番号を正規化（xxx-xxxx形式に統一）
+     */
+    function formatPostalCode(zipCode) {
+      if (!zipCode) return '';
+      // 数字のみ抽出
+      const digits = zipCode.replace(/[^0-9]/g, '');
+      if (digits.length !== 7) return zipCode; // 7桁でない場合はそのまま返す
+      // xxx-xxxx形式に整形
+      return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    }
+
+    /**
+     * 住所を2行に自動分割
+     * スペースがある場合は最初のスペースで分割
+     * スペースがない場合は文字数で判断
+     */
+    function splitAddress(address) {
+      if (!address) return { line1: '', line2: '' };
+      
+      // 全角・半角スペースで分割を試みる
+      const spaceMatch = address.match(/^([^\s　]+)[\s　]+(.+)$/);
+      if (spaceMatch) {
+        return {
+          line1: spaceMatch[1],
+          line2: spaceMatch[2]
+        };
+      }
+      
+      // スペースがない場合、文字数で判断（40文字以上なら中央で分割）
+      if (address.length >= 40) {
+        const midPoint = Math.floor(address.length / 2);
+        return {
+          line1: address.slice(0, midPoint),
+          line2: address.slice(midPoint)
+        };
+      }
+      
+      // 短い住所はそのまま1行で返す
+      return {
+        line1: address,
+        line2: ''
+      };
+    }
+
+    /**
+     * 縦書き用にテキストを変換
+     * - 半角 → 全角
+     * - ハイフン → 長音記号（縦線表示用）
+     */
+    function convertToVerticalText(text) {
       if (!text) return '';
-      return toFullWidth(text).replace(/-/g, '－');
+      
+      // 半角英数字・記号を全角に変換
+      let converted = text.replace(/[!-~]/g, (ch) => {
+        return String.fromCharCode(ch.charCodeAt(0) + 0xFEE0);
+      });
+      
+      // スペースも全角に
+      converted = converted.replace(/ /g, '　');
+      
+      // ハイフンを長音記号に（縦書き時に縦線になる）
+      converted = converted.replace(/[-－]/g, 'ー');
+      
+      return converted;
+    }
+
+    /**
+     * 旧関数（後方互換性のため残す）
+     */
+    function formatVerticalText(text) {
+      return convertToVerticalText(text);
     }
 
     function toFullWidth(str) {
+      if (!str) return '';
       return str.replace(/[!-~]/g, (ch) =>
         String.fromCharCode(ch.charCodeAt(0) + 0xFEE0)
       ).replace(/ /g, '　');
