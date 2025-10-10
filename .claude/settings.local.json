@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/tatsuki/Library/CloudStorage/GoogleDrive-info@tsukichiyo.jp/共有ドライブ/データ移行用/⭐︎案件⭐︎/KASEKI Creative/ohira-customer-management-main/webapp/**)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Read(//private/tmp/**)",
+      "Bash(/Users/tatsuki/.local/bin/playwright screenshot --full-page http://localhost:3000 screenshot.png)",
+      "Read(//tmp/**)",
+      "Bash(pkill:*)",
+      "Bash(open http://localhost:3000)",
+      "Bash(/Users/tatsuki/.local/bin/playwright screenshot --full-page http://localhost:3000 screenshot_fixed.png)",
+      "Bash(grep:*)",
+      "Read(///**)",
+      "Bash(node -e \"\nconst fs = require(''fs'');\nconst html = fs.readFileSync(''/tmp/index_downloaded.html'', ''utf-8'');\nconst scriptMatches = html.match(/<script[^>]*>/g);\nconst scriptCloses = html.match(/<\\/script>/g);\nconsole.log(''Script opens:'', scriptMatches ? scriptMatches.length : 0);\nconsole.log(''Script closes:'', scriptCloses ? scriptCloses.length : 0);\n\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

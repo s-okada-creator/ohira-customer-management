@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "buildCommand": "cd webapp && npm run build",
+  "outputDirectory": "webapp/dist",
+  "builds": [
+    {
+      "src": "webapp/src/server/index.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["webapp/src/**", "☆顧客フォルダ/**"],
+        "maxDuration": 30
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "webapp/src/server/index.ts"
+    }
+  ]
+}
