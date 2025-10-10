@@ -411,21 +411,27 @@ async function combinePdfs(addressPdfBytes: Uint8Array, backPdfBytes: Buffer, cu
   const addressPdf = await PDFDocument.load(addressPdfBytes);
   const addressPages = await finalPdf.copyPages(addressPdf, addressPdf.getPageIndices());
   
-  // お得で安心PDFを読み込み
+  // お得で安心PDFを読み込み（裏面用）
   const backPdf = await PDFDocument.load(backPdfBytes);
-  const backPageIndices = backPdf.getPageIndices();
+  // 裏面は最初の1ページのみ使用
+  const [backPage] = await finalPdf.copyPages(backPdf, [0]);
   
-  // 各顧客に対して、表面（宛名）→ 裏面（お得で安心）の順で追加
+  // 各顧客に対して、表面（宛名）→ 裏面（お得で安心の1ページ目）の順で追加
   for (let i = 0; i < customerCount; i++) {
     // 表面（宛名）を追加
     if (i < addressPages.length) {
       finalPdf.addPage(addressPages[i]);
     }
     
-    // 裏面（お得で安心PDF）のページを全て追加
-    for (const pageIndex of backPageIndices) {
-      const [backPage] = await finalPdf.copyPages(backPdf, [pageIndex]);
+    // 裏面（お得で安心PDFの1ページ目）を追加
+    // 各顧客ごとに新しいコピーを作成
+    if (i === 0) {
+      // 最初の顧客には既にコピーしたページを使用
       finalPdf.addPage(backPage);
+    } else {
+      // 2番目以降の顧客には新しいコピーを作成
+      const [newBackPage] = await finalPdf.copyPages(backPdf, [0]);
+      finalPdf.addPage(newBackPage);
     }
   }
   
