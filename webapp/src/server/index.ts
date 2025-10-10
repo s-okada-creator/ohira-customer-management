@@ -440,7 +440,7 @@ async function combinePdfs(addressPdfBytes: Uint8Array, backPdfBytes: Buffer, cu
 function generateAddressHtml(customers: CustomerRow[]): string {
   const SENDER_INFO = {
     postalCode: '751-0804',
-    lines: ['山口県下関市楠乃３丁目23-33', '大平自動車商会', 'TEL: 083-000-0000']
+    lines: ['山口県下関市楠乃５丁目９', '大平自動車商会', 'TEL: 083-257-0101']
   };
   
   const fmt = (v: any) => v == null ? '' : String(v);
