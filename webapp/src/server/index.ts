@@ -5,6 +5,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { getCustomerSheetValues } from './googleSheets.js';
+import puppeteer from 'puppeteer';
+import { PDFDocument } from 'pdf-lib';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -314,6 +316,390 @@ app.get('/api/customers', async (_req, res) => {
     res.status(500).json({ error: '統合Excelブックからの顧客データ読み込みに失敗しました', detail: String(err) });
   }
 });
+
+// はがきPDF生成エンドポイント
+app.post('/api/generate-hagaki-pdf', async (req, res) => {
+  try {
+    const { customerIds } = req.body;
+    
+    if (!customerIds || !Array.isArray(customerIds)) {
+      return res.status(400).json({ error: '顧客IDが指定されていません' });
+    }
+
+    console.log(`はがきPDF生成開始: ${customerIds.length}件の顧客`);
+
+    // 全顧客データを取得
+    const allCustomers = await readCustomers();
+    
+    // 指定された顧客のみをフィルタリング
+    const targetCustomers = customerIds[0] === 'all' 
+      ? allCustomers 
+      : allCustomers.filter(c => customerIds.includes(c['顧客番号']));
+
+    if (targetCustomers.length === 0) {
+      return res.status(400).json({ error: '対象顧客が見つかりません' });
+    }
+
+    // はがき宛名PDFを生成
+    const addressPdfBytes = await generateAddressPdf(targetCustomers);
+    
+    // お得で安心PDFを読み込み
+    const backPdfPath = path.resolve(process.cwd(), 'src', 'public', 'お得で安心♪.pdf');
+    
+    if (!fs.existsSync(backPdfPath)) {
+      console.error('お得で安心♪.pdfが見つかりません:', backPdfPath);
+      return res.status(500).json({ error: 'お得で安心♪.pdfが見つかりません' });
+    }
+    
+    const backPdfBytes = fs.readFileSync(backPdfPath);
+    
+    // 表面と裏面を結合
+    const finalPdf = await combinePdfs(addressPdfBytes, backPdfBytes, targetCustomers.length);
+    
+    console.log(`はがきPDF生成完了: ${targetCustomers.length}件`);
+    
+    // PDFをレスポンスとして返す
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="hagaki_${new Date().toISOString().slice(0, 10)}.pdf"`);
+    res.send(Buffer.from(finalPdf));
+    
+  } catch (error) {
+    console.error('PDF生成エラー:', error);
+    res.status(500).json({ error: 'PDF生成に失敗しました', detail: String(error) });
+  }
+});
+
+/**
+ * はがき宛名PDFを生成（Puppeteerを使用）
+ */
+async function generateAddressPdf(customers: CustomerRow[]): Promise<Uint8Array> {
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+  
+  try {
+    const page = await browser.newPage();
+    
+    // はがき宛名HTMLを生成
+    const html = generateAddressHtml(customers);
+    
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    
+    // PDFを生成（はがきサイズ: 100mm x 148mm）
+    const pdfBuffer = await page.pdf({
+      width: '100mm',
+      height: '148mm',
+      printBackground: true,
+      margin: { top: 0, right: 0, bottom: 0, left: 0 }
+    });
+    
+    return new Uint8Array(pdfBuffer);
+  } finally {
+    await browser.close();
+  }
+}
+
+/**
+ * 表面（宛名）と裏面（お得で安心PDF）を結合
+ */
+async function combinePdfs(addressPdfBytes: Uint8Array, backPdfBytes: Buffer, customerCount: number): Promise<Uint8Array> {
+  // 新しいPDFドキュメントを作成
+  const finalPdf = await PDFDocument.create();
+  
+  // 宛名PDFを読み込み
+  const addressPdf = await PDFDocument.load(addressPdfBytes);
+  const addressPages = await finalPdf.copyPages(addressPdf, addressPdf.getPageIndices());
+  
+  // お得で安心PDFを読み込み
+  const backPdf = await PDFDocument.load(backPdfBytes);
+  const backPageIndices = backPdf.getPageIndices();
+  
+  // 各顧客に対して、表面（宛名）→ 裏面（お得で安心）の順で追加
+  for (let i = 0; i < customerCount; i++) {
+    // 表面（宛名）を追加
+    if (i < addressPages.length) {
+      finalPdf.addPage(addressPages[i]);
+    }
+    
+    // 裏面（お得で安心PDF）のページを全て追加
+    for (const pageIndex of backPageIndices) {
+      const [backPage] = await finalPdf.copyPages(backPdf, [pageIndex]);
+      finalPdf.addPage(backPage);
+    }
+  }
+  
+  // PDFをバイト配列として保存
+  const pdfBytes = await finalPdf.save();
+  return pdfBytes;
+}
+
+/**
+ * はがき宛名HTMLを生成
+ */
+function generateAddressHtml(customers: CustomerRow[]): string {
+  const SENDER_INFO = {
+    postalCode: '751-0804',
+    lines: ['山口県下関市楠乃３丁目23-33', '大平自動車商会', 'TEL: 083-000-0000']
+  };
+  
+  const fmt = (v: any) => v == null ? '' : String(v);
+  
+  const convertToVerticalText = (text: string): string => {
+    if (!text) return '';
+    let converted = text.replace(/[!-~]/g, (ch) => 
+      String.fromCharCode(ch.charCodeAt(0) + 0xFEE0)
+    );
+    converted = converted.replace(/ /g, '　');
+    converted = converted.replace(/[-－]/g, 'ー');
+    return converted;
+  };
+  
+  const formatPostalCode = (zipCode: string): string => {
+    if (!zipCode) return '';
+    const digits = zipCode.replace(/[^0-9]/g, '');
+    if (digits.length !== 7) return zipCode;
+    return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  };
+  
+  const renderPostalDigits = (originalZip: string, isSender = false): string => {
+    const digits = originalZip.replace(/[^0-9]/g, '').slice(0, 7);
+    const padded = digits.padEnd(7, ' ');
+    
+    if (isSender) {
+      return padded.split('').map((d, i) => {
+        if (i === 3) {
+          return `<div style="width: 2mm;"></div><span class="sender-postal-box">${d.trim() ? d : ''}</span>`;
+        }
+        return `<span class="sender-postal-box">${d.trim() ? d : ''}</span>`;
+      }).join('');
+    } else {
+      return padded.split('').map((d, i) => {
+        if (i === 3) {
+          return `<div class="postal-separator">ー</div><span class="postal-box">${d.trim() ? d : ''}</span>`;
+        }
+        return `<span class="postal-box">${d.trim() ? d : ''}</span>`;
+      }).join('');
+    }
+  };
+  
+  const splitAddress = (address: string): { line1: string; line2: string } => {
+    if (!address) return { line1: '', line2: '' };
+    const spaceMatch = address.match(/^([^\s　]+)[\s　]+(.+)$/);
+    if (spaceMatch && spaceMatch[1] && spaceMatch[2]) {
+      return { line1: spaceMatch[1], line2: spaceMatch[2] };
+    }
+    if (address.length >= 40) {
+      const midPoint = Math.floor(address.length / 2);
+      return { line1: address.slice(0, midPoint), line2: address.slice(midPoint) };
+    }
+    return { line1: address, line2: '' };
+  };
+  
+  const renderAddressCard = (row: CustomerRow): string => {
+    const rawZip = fmt(row['自宅郵便番号']);
+    const address1 = fmt(row['自宅住所1']);
+    const address2 = fmt(row['自宅住所2']);
+    const name = fmt(row['名　前']) || fmt(row['顧客名']) || fmt(row['顧客名（フォルダ）']);
+
+    const formattedZip = formatPostalCode(rawZip);
+    const zipDigits = formattedZip.replace(/[^0-9]/g, '');
+
+    let addressLine1, addressLine2;
+    if (address1 && address2) {
+      addressLine1 = address1;
+      addressLine2 = address2;
+    } else if (address1 && !address2) {
+      const split = splitAddress(address1);
+      addressLine1 = split.line1;
+      addressLine2 = split.line2;
+    } else {
+      addressLine1 = '';
+      addressLine2 = '';
+    }
+
+    const verticalAddress1 = convertToVerticalText(addressLine1);
+    const verticalAddress2 = convertToVerticalText(addressLine2);
+    const verticalName = convertToVerticalText(name);
+
+    const postalElement = zipDigits ? `<div class="recipient-postal">${renderPostalDigits(zipDigits)}</div>` : '';
+    const senderZip = formatPostalCode(SENDER_INFO.postalCode);
+    const senderZipDigits = senderZip.replace(/[^0-9]/g, '');
+    const senderPostal = senderZipDigits ? `<div class="sender-postal">${renderPostalDigits(senderZipDigits, true)}</div>` : '';
+    
+    const addressLines = [verticalAddress1, verticalAddress2]
+      .filter(Boolean)
+      .map(line => `<span>${line}</span>`)
+      .join('');
+    
+    const senderAddress = convertToVerticalText(SENDER_INFO.lines[0] || '');
+    const senderName = convertToVerticalText(SENDER_INFO.lines[1] || '');
+    const senderContact = convertToVerticalText(SENDER_INFO.lines[2] || '');
+    
+    const senderInfo = [senderContact, senderName, senderAddress]
+      .filter(Boolean)
+      .map(line => `<div class="sender-line">${line}</div>`)
+      .join('');
+    
+    const nameWithHonorific = verticalName ? `<div class="recipient-name">${verticalName}様</div>` : '';
+    const stampBox = `<div class="stamp-box">切手貼付位置</div>`;
+
+    return `
+      <div class="sheet">
+        ${stampBox}
+        ${postalElement}
+        <div class="recipient-address">${addressLines}</div>
+        ${nameWithHonorific}
+        <div class="sender-block">
+          <div class="sender-info">${senderInfo}</div>
+          ${senderPostal}
+        </div>
+      </div>
+    `;
+  };
+  
+  const cards = customers.map(renderAddressCard).join('');
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>はがき宛名</title>
+      <style>
+        @page {
+          size: 100mm 148mm;
+          margin: 0;
+        }
+        body {
+          margin: 0;
+          padding: 0;
+          font-family: 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', '游ゴシック', sans-serif;
+        }
+        .sheet {
+          width: 100mm;
+          height: 148mm;
+          background: white;
+          page-break-after: always;
+          position: relative;
+          box-sizing: border-box;
+        }
+        .stamp-box {
+          position: absolute;
+          top: 8mm;
+          left: 8mm;
+          width: 20mm;
+          height: 25mm;
+          border: 1.5px dashed #333;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 9pt;
+          color: #333;
+          writing-mode: vertical-rl;
+          text-orientation: upright;
+          letter-spacing: 1px;
+        }
+        .recipient-postal {
+          position: absolute;
+          top: 10mm;
+          right: 8mm;
+          display: flex;
+          gap: 1mm;
+        }
+        .postal-box {
+          width: 5.5mm;
+          height: 7mm;
+          border: 1.5px solid #D32F2F;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14pt;
+          font-weight: bold;
+          color: black;
+          background: white;
+          font-family: "Courier New", monospace;
+        }
+        .postal-separator {
+          width: 2mm;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16pt;
+          color: #D32F2F;
+        }
+        .sender-postal {
+          display: flex;
+          gap: 1mm;
+          margin-bottom: 2mm;
+        }
+        .sender-postal-box {
+          width: 4mm;
+          height: 5mm;
+          border: 1px dashed #D32F2F;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 9pt;
+          color: black;
+          background: white;
+          font-family: "Courier New", monospace;
+        }
+        .recipient-address {
+          position: absolute;
+          top: 25mm;
+          right: 8mm;
+          font-size: 12pt;
+          color: black;
+          writing-mode: vertical-rl;
+          text-orientation: upright;
+          line-height: 1.6;
+          letter-spacing: 1px;
+        }
+        .recipient-address span {
+          display: inline-block;
+          margin-left: 5mm;
+        }
+        .recipient-name {
+          position: absolute;
+          top: 35mm;
+          right: 45mm;
+          font-size: 24pt;
+          font-weight: bold;
+          color: black;
+          writing-mode: vertical-rl;
+          text-orientation: upright;
+          line-height: 1.4;
+          letter-spacing: 3px;
+        }
+        .sender-block {
+          position: absolute;
+          bottom: 8mm;
+          left: 8mm;
+          width: 70mm;
+        }
+        .sender-info {
+          display: flex;
+          flex-direction: row;
+          gap: 3mm;
+          margin-bottom: 4mm;
+        }
+        .sender-line {
+          font-size: 10pt;
+          color: black;
+          writing-mode: vertical-rl;
+          text-orientation: upright;
+          letter-spacing: 1px;
+          line-height: 1.4;
+        }
+      </style>
+    </head>
+    <body>
+      ${cards}
+    </body>
+    </html>
+  `;
+}
 
 // Vercel環境では app.listen() は不要
 if (process.env.NODE_ENV !== 'production') {
