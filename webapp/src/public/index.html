@@ -771,7 +771,7 @@
         <html>
         <head>
           <meta charset="UTF-8">
-          <title>はがき宛名</title>
+          <title>はがき宛名（両面）</title>
           <style>
             @page {
               size: 100mm 148mm;
@@ -791,6 +791,23 @@
               page-break-after: always;
               position: relative;
               box-sizing: border-box;
+            }
+            .back-page {
+              width: 100mm;
+              height: 148mm;
+              background: white;
+              margin: 0 auto;
+              page-break-after: always;
+              position: relative;
+              box-sizing: border-box;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              overflow: hidden;
+            }
+            .back-page embed {
+              width: 100%;
+              height: 100%;
             }
             /* 切手貼付欄 */
             .stamp-box {
@@ -926,7 +943,17 @@
           </style>
         </head>
         <body>
-          ${inspectionRows.map(row => renderAddressCard(row)).join('')}
+          ${inspectionRows.map(row => {
+            // 宛名ページ
+            const addressPage = renderAddressCard(row);
+            // 裏面（お得で安心PDF）をiframeで埋め込み
+            const backPage = `
+              <div class="back-page">
+                <embed src="/お得で安心♪.pdf" type="application/pdf" width="100%" height="100%" />
+              </div>
+            `;
+            return addressPage + backPage;
+          }).join('')}
         </body>
         </html>
       `;
