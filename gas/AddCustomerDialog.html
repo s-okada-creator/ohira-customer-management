@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #333;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    textarea {
+      height: 60px;
+      resize: vertical;
+    }
+    .button-group {
+      text-align: right;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      margin-left: 10px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .btn-primary {
+      background-color: #4285f4;
+      color: white;
+    }
+    .btn-secondary {
+      background-color: #6c757d;
+      color: white;
+    }
+    .btn-primary:hover {
+      background-color: #3367d6;
+    }
+    .btn-secondary:hover {
+      background-color: #545b62;
+    }
+    .required {
+      color: red;
+    }
+    .section-title {
+      background-color: #e9ecef;
+      padding: 10px;
+      margin: 20px 0 15px 0;
+      border-radius: 4px;
+      font-weight: bold;
+      color: #495057;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>新規顧客追加</h2>
+    
+    <form id="customerForm">
+      <div class="section-title">基本情報</div>
+      
+      <div class="form-group">
+        <label for="customerName">顧客名 <span class="required">*</span></label>
+        <input type="text" id="customerName" name="customerName" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="customerNameKana">ふりがな <span class="required">*</span></label>
+        <input type="text" id="customerNameKana" name="customerNameKana" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="postalCode">郵便番号</label>
+        <input type="text" id="postalCode" name="postalCode" placeholder="例: 751-0849">
+      </div>
+      
+      <div class="form-group">
+        <label for="address1">住所1</label>
+        <input type="text" id="address1" name="address1" placeholder="例: 山口県下関市綾羅木本町">
+      </div>
+      
+      <div class="form-group">
+        <label for="address2">住所2</label>
+        <input type="text" id="address2" name="address2">
+      </div>
+      
+      <div class="form-group">
+        <label for="phoneNumber">電話番号</label>
+        <input type="tel" id="phoneNumber" name="phoneNumber">
+      </div>
+      
+      <div class="form-group">
+        <label for="mobileNumber">携帯電話番号</label>
+        <input type="tel" id="mobileNumber" name="mobileNumber">
+      </div>
+      
+      <div class="form-group">
+        <label for="email">メールアドレス</label>
+        <input type="email" id="email" name="email">
+      </div>
+      
+      <div class="section-title">車両情報</div>
+      
+      <div class="form-group">
+        <label for="carName">車種名 <span class="required">*</span></label>
+        <input type="text" id="carName" name="carName" required placeholder="例: セリカ">
+      </div>
+      
+      <div class="form-group">
+        <label for="carNumber">車両ナンバー</label>
+        <input type="text" id="carNumber" name="carNumber" placeholder="例: 山口 33 ふ 269">
+      </div>
+      
+      <div class="form-group">
+        <label for="carYear">車両年式</label>
+        <input type="text" id="carYear" name="carYear" placeholder="例: 2020年">
+      </div>
+      
+      <div class="form-group">
+        <label for="carColor">車両色</label>
+        <input type="text" id="carColor" name="carColor" placeholder="例: ホワイト">
+      </div>
+      
+      <div class="form-group">
+        <label for="purchaseDate">購入日</label>
+        <input type="date" id="purchaseDate" name="purchaseDate">
+      </div>
+      
+      <div class="form-group">
+        <label for="warrantyPeriod">保証期間</label>
+        <input type="text" id="warrantyPeriod" name="warrantyPeriod" placeholder="例: 3年">
+      </div>
+      
+      <div class="form-group">
+        <label for="nextInspection">次回点検予定</label>
+        <input type="date" id="nextInspection" name="nextInspection">
+      </div>
+      
+      <div class="section-title">その他情報</div>
+      
+      <div class="form-group">
+        <label for="staff">担当者</label>
+        <input type="text" id="staff" name="staff">
+      </div>
+      
+      <div class="form-group">
+        <label for="referrer">紹介者</label>
+        <input type="text" id="referrer" name="referrer">
+      </div>
+      
+      <div class="form-group">
+        <label for="notes">備考</label>
+        <textarea id="notes" name="notes" placeholder="特記事項があれば記入してください"></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label for="notes2">備考2</label>
+        <textarea id="notes2" name="notes2"></textarea>
+      </div>
+      
+      <div class="button-group">
+        <button type="button" class="btn-secondary" onclick="google.script.host.close()">キャンセル</button>
+        <button type="submit" class="btn-primary">顧客を追加</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('customerForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // フォームデータを取得
+      const formData = new FormData(this);
+      const customerData = {};
+      
+      for (let [key, value] of formData.entries()) {
+        customerData[key] = value;
+      }
+      
+      // 必須項目のチェック
+      if (!customerData.customerName || !customerData.customerNameKana || !customerData.carName) {
+        alert('必須項目（顧客名、ふりがな、車種名）を入力してください。');
+        return;
+      }
+      
+      // ローディング表示
+      const submitButton = this.querySelector('button[type="submit"]');
+      const originalText = submitButton.textContent;
+      submitButton.textContent = '追加中...';
+      submitButton.disabled = true;
+      
+      // Google Apps Script関数を呼び出し
+      google.script.run
+        .withSuccessHandler(function(result) {
+          submitButton.textContent = originalText;
+          submitButton.disabled = false;
+          
+          if (result.success) {
+            alert('新規顧客が正常に追加されました！\n顧客番号: ' + result.customerNumber);
+            google.script.host.close();
+          } else {
+            alert('エラー: ' + result.message);
+          }
+        })
+        .withFailureHandler(function(error) {
+          submitButton.textContent = originalText;
+          submitButton.disabled = false;
+          alert('エラーが発生しました: ' + error.message);
+        })
+        .addNewCustomer(customerData);
+    });
+  </script>
+</body>
+</html>
