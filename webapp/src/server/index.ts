@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { getCustomerSheetValues } from './googleSheets.js';
 import puppeteer from 'puppeteer';
+import puppeteerCore from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import { PDFDocument } from 'pdf-lib';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -373,10 +375,25 @@ app.post('/api/generate-hagaki-pdf', async (req, res) => {
  * はがき宛名PDFを生成（Puppeteerを使用）
  */
 async function generateAddressPdf(customers: CustomerRow[]): Promise<Uint8Array> {
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
+  // Vercel環境かどうかを判定
+  const isVercel = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+  
+  let browser;
+  
+  if (isVercel) {
+    // Vercel環境: puppeteer-core + chromium を使用
+    browser = await puppeteerCore.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+  } else {
+    // ローカル環境: 通常のpuppeteerを使用
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+  }
   
   try {
     const page = await browser.newPage();

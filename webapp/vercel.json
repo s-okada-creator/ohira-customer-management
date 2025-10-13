@@ -8,14 +8,28 @@
       "use": "@vercel/node",
       "config": {
         "includeFiles": ["src/**"],
-        "maxDuration": 30
+        "maxDuration": 60
       }
     }
   ],
   "routes": [
     {
+      "src": "/api/generate-hagaki-pdf",
+      "dest": "src/server/index.ts",
+      "methods": ["POST"],
+      "headers": {
+        "Cache-Control": "no-cache"
+      }
+    },
+    {
       "src": "/(.*)",
       "dest": "src/server/index.ts"
     }
-  ]
+  ],
+  "functions": {
+    "src/server/index.ts": {
+      "memory": 3008,
+      "maxDuration": 60
+    }
+  }
 }
