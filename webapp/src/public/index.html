@@ -400,8 +400,8 @@
       const currentMonth = today.getMonth();
       const currentYear = today.getFullYear();
       
-      // 翌々月の月末を計算
-      const targetMonth = new Date(currentYear, currentMonth + 2, 0); // 翌々月の月末
+      // 3ヶ月先の月末を計算
+      const targetMonth = new Date(currentYear, currentMonth + 4, 0); // 3ヶ月先の月末
       
       inspectionRows = allRows.filter(row => {
         const inspectionDate = row['次回車検満期日'];
@@ -422,15 +422,15 @@
       const today = new Date();
       const currentMonth = today.getMonth();
       const currentYear = today.getFullYear();
-      const targetMonth = new Date(currentYear, currentMonth + 2, 0);
-      
+      const targetMonth = new Date(currentYear, currentMonth + 4, 0);
+
       const todayStr = today.toLocaleDateString('ja-JP');
       const targetStr = targetMonth.toLocaleDateString('ja-JP');
-      
+
       infoElement.innerHTML = `
         <strong>📅 車検期限案内対象期間:</strong> ${todayStr} ～ ${targetStr}<br>
         <strong>👥 対象顧客数:</strong> ${inspectionRows.length}件<br>
-        <em>※ 今月から翌々月までの車検満期日が設定されている顧客を表示しています</em>
+        <em>※ 今月から3ヶ月先までの車検満期日が設定されている顧客を表示しています</em>
       `;
     }
 
@@ -800,14 +800,13 @@
               page-break-after: always;
               position: relative;
               box-sizing: border-box;
-              display: flex;
-              align-items: center;
-              justify-content: center;
               overflow: hidden;
             }
-            .back-page embed {
+            .back-page img {
               width: 100%;
               height: 100%;
+              object-fit: contain;
+              display: block;
             }
             /* 切手貼付欄 */
             .stamp-box {
@@ -946,10 +945,10 @@
           ${inspectionRows.map(row => {
             // 宛名ページ
             const addressPage = renderAddressCard(row);
-            // 裏面（お得で安心PDF）をiframeで埋め込み
+            // 裏面（お得で安心）を画像で表示
             const backPage = `
               <div class="back-page">
-                <embed src="/お得で安心♪.pdf" type="application/pdf" width="100%" height="100%" />
+                <img src="/otoku-anshin-back.png" alt="お得で安心 車検のご案内" />
               </div>
             `;
             return addressPage + backPage;
