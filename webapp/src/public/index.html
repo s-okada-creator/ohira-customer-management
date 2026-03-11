@@ -3,129 +3,334 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>顧客一覧</title>
+  <title>大平自動車商会 - 顧客管理</title>
   <style>
+    *{ box-sizing:border-box; }
     body{
-      font-family:system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans','Apple Color Emoji','Segoe UI Emoji';
-      margin:12px;
-      background-color:#f5f5f5;
+      font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+      margin:0;
+      padding:12px;
+      background-color:#f0f2f5;
+      color:#333;
     }
     #app{
       max-width:1400px;
       margin:0 auto;
       background:white;
-      border-radius:8px;
-      box-shadow:0 2px 8px rgba(0,0,0,0.1);
+      border-radius:12px;
+      box-shadow:0 4px 20px rgba(0,0,0,0.08);
       overflow:hidden;
     }
+
+    /* ヘッダー */
     .header-container{
       display:flex;
       justify-content:space-between;
       align-items:center;
-      padding:16px 20px;
-      background:#f8f9fa;
-      border-bottom:1px solid #e9ecef;
+      padding:20px 24px;
+      background:linear-gradient(135deg,#1a73e8,#1557b0);
+      color:white;
+    }
+    .header-left{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .header-logo{
+      font-size:24px;
     }
     h1{
       margin:0;
-      font-size:18px;
+      font-size:20px;
+      font-weight:600;
+      letter-spacing:0.5px;
     }
-    .menu-buttons{
+    .header-subtitle{
+      font-size:12px;
+      opacity:0.8;
+      margin-top:2px;
+    }
+
+    /* タブナビゲーション */
+    .tab-nav{
       display:flex;
+      border-bottom:2px solid #e9ecef;
+      background:#fafbfc;
+    }
+    .tab-btn{
+      flex:1;
+      padding:16px 24px;
+      border:none;
+      background:transparent;
+      cursor:pointer;
+      font-size:15px;
+      font-weight:500;
+      color:#666;
+      transition:all 0.2s;
+      position:relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       gap:8px;
     }
-    .menu-btn{
-      padding:8px 16px;
-      border:1px solid #ddd;
-      background:white;
-      border-radius:4px;
-      cursor:pointer;
-      font-size:14px;
-      transition:all 0.2s;
-    }
-    .menu-btn:hover{
+    .tab-btn:hover{
       background:#f0f0f0;
+      color:#333;
     }
-    .menu-btn.active{
-      background:#007bff;
+    .tab-btn.active{
+      color:#1a73e8;
+      font-weight:600;
+    }
+    .tab-btn.active::after{
+      content:'';
+      position:absolute;
+      bottom:-2px;
+      left:0;
+      right:0;
+      height:3px;
+      background:#1a73e8;
+      border-radius:3px 3px 0 0;
+    }
+    .tab-icon{
+      font-size:18px;
+    }
+    .tab-badge{
+      background:#e8f0fe;
+      color:#1a73e8;
+      padding:2px 8px;
+      border-radius:12px;
+      font-size:12px;
+      font-weight:600;
+    }
+    .tab-btn.active .tab-badge{
+      background:#1a73e8;
       color:white;
-      border-color:#007bff;
     }
+
+    /* 車検案内パネル */
     .bulk-contact-panel{
-      padding:16px 20px;
-      background:#e3f2fd;
-      border-bottom:1px solid #bbdefb;
+      padding:20px 24px;
+      background:linear-gradient(135deg,#e8f0fe,#f0f4ff);
+      border-bottom:1px solid #c8d6e5;
       display:none;
     }
     .bulk-contact-panel.show{
       display:block;
     }
-    .contact-options{
+
+    /* ワークフロー */
+    .workflow{
       display:flex;
-      gap:12px;
+      gap:0;
+      margin-bottom:20px;
       align-items:center;
       flex-wrap:wrap;
     }
-    .contact-btn{
-      padding:10px 20px;
-      border:none;
-      border-radius:6px;
-      cursor:pointer;
-      font-size:14px;
-      font-weight:500;
-      transition:all 0.2s;
+    .workflow-step{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 16px;
+      background:white;
+      border-radius:8px;
+      font-size:13px;
+      color:#555;
+      border:1px solid #dde3ea;
     }
-    .contact-btn.email{
-      background:#28a745;
+    .workflow-step.current{
+      background:#1a73e8;
+      color:white;
+      border-color:#1a73e8;
+      font-weight:600;
+    }
+    .workflow-step-num{
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      background:#e0e0e0;
+      color:#666;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      font-weight:700;
+      flex-shrink:0;
+    }
+    .workflow-step.current .workflow-step-num{
+      background:rgba(255,255,255,0.3);
       color:white;
     }
-    .contact-btn.email:hover{
-      background:#218838;
+    .workflow-arrow{
+      font-size:18px;
+      color:#bbb;
+      padding:0 6px;
     }
-    .contact-btn.document{
-      background:#17a2b8;
-      color:white;
+
+    /* 情報カード */
+    .info-cards{
+      display:flex;
+      gap:16px;
+      margin-bottom:20px;
+      flex-wrap:wrap;
     }
-    .contact-btn.document:hover{
-      background:#138496;
+    .info-card{
+      flex:1;
+      min-width:160px;
+      background:white;
+      border-radius:10px;
+      padding:16px;
+      border:1px solid #e0e0e0;
     }
-    .contact-btn.print{
-      background:#6c757d;
-      color:white;
+    .info-card-label{
+      font-size:12px;
+      color:#888;
+      margin-bottom:4px;
     }
-    .contact-btn.print:hover{
-      background:#5a6268;
+    .info-card-value{
+      font-size:22px;
+      font-weight:700;
+      color:#333;
     }
-    .inspection-info{
-      background:#fff3cd;
-      border:1px solid #ffeaa7;
-      border-radius:6px;
-      padding:12px 16px;
-      margin-bottom:16px;
-      font-size:14px;
+    .info-card-value.highlight{
+      color:#1a73e8;
     }
-    .search-container{
-      padding:16px 20px;
+
+    /* アクションボタン群 */
+    .action-buttons{
       display:flex;
       gap:12px;
       flex-wrap:wrap;
+    }
+    .action-btn{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:6px;
+      padding:16px 24px;
+      border:2px solid #e0e0e0;
+      background:white;
+      border-radius:12px;
+      cursor:pointer;
+      transition:all 0.2s;
+      min-width:140px;
+    }
+    .action-btn:hover:not(:disabled){
+      border-color:#1a73e8;
+      background:#f8faff;
+      transform:translateY(-1px);
+      box-shadow:0 4px 12px rgba(26,115,232,0.15);
+    }
+    .action-btn:disabled{
+      opacity:0.5;
+      cursor:not-allowed;
+    }
+    .action-btn-icon{
+      font-size:28px;
+    }
+    .action-btn-label{
+      font-size:14px;
+      font-weight:600;
+      color:#333;
+    }
+    .action-btn-desc{
+      font-size:11px;
+      color:#999;
+      text-align:center;
+    }
+    .action-btn-badge{
+      font-size:10px;
+      color:#999;
+      background:#f0f0f0;
+      padding:2px 8px;
+      border-radius:4px;
+    }
+
+    /* 月選択UI */
+    .month-selector{
+      margin-bottom:20px;
+    }
+    .month-selector-label{
+      font-size:13px;
+      font-weight:600;
+      color:#555;
+      margin-bottom:8px;
+    }
+    .month-chips{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .month-chip{
+      padding:6px 14px;
+      border:2px solid #dde3ea;
+      background:white;
+      border-radius:20px;
+      font-size:13px;
+      cursor:pointer;
+      transition:all 0.15s;
+      color:#555;
+      font-weight:500;
+    }
+    .month-chip:hover{
+      border-color:#1a73e8;
+      color:#1a73e8;
+    }
+    .month-chip.selected{
+      background:#1a73e8;
+      color:white;
+      border-color:#1a73e8;
+    }
+    .month-chip.select-all{
+      font-weight:700;
+    }
+    .month-selected-info{
+      margin-top:10px;
+      font-size:13px;
+      color:#1a73e8;
+      font-weight:600;
+    }
+
+    /* 検索バー */
+    .search-container{
+      padding:16px 24px;
+      display:flex;
+      gap:12px;
       align-items:center;
       background:white;
       border-bottom:1px solid #e9ecef;
     }
-    #q{
+    .search-wrapper{
       flex:1;
-      min-width:280px;
-      padding:10px 12px;
+      position:relative;
+    }
+    .search-icon{
+      position:absolute;
+      left:12px;
+      top:50%;
+      transform:translateY(-50%);
       font-size:16px;
-      border:1px solid #ddd;
-      border-radius:6px;
+      color:#999;
+    }
+    #q{
+      width:100%;
+      padding:12px 12px 12px 38px;
+      font-size:15px;
+      border:2px solid #e0e0e0;
+      border-radius:10px;
+      outline:none;
+      transition:border-color 0.2s;
+    }
+    #q:focus{
+      border-color:#1a73e8;
     }
     #meta{
       white-space:nowrap;
-      color:#666;
+      color:#888;
       font-size:14px;
+      font-weight:500;
     }
+
+    /* テーブル */
     .table-container{
       overflow:auto;
       position:relative;
@@ -133,337 +338,832 @@
     #tbl{
       border-collapse:collapse;
       width:100%;
-      min-width:1200px;
       position:relative;
     }
     thead{
       position:sticky;
       top:0;
-      background:#fafafa;
       z-index:10;
     }
+    th{
+      text-align:left;
+      padding:12px 16px;
+      background:#f8f9fa;
+      border-bottom:2px solid #e0e0e0;
+      cursor:pointer;
+      user-select:none;
+      font-size:13px;
+      font-weight:600;
+      color:#555;
+      white-space:nowrap;
+      transition:background 0.15s;
+    }
+    th:hover{
+      background:#eef1f5;
+    }
+    td{
+      padding:12px 16px;
+      border-bottom:1px solid #f0f0f0;
+      font-size:14px;
+      line-height:1.5;
+    }
+    /* ゼブラストライプ */
+    tbody tr:nth-child(even){
+      background:#fafbfc;
+    }
+    /* 行ホバー */
+    tbody tr:hover{
+      background:#e8f0fe !important;
+      cursor:pointer;
+    }
+    /* 名前列固定 */
     .name-column{
       position:sticky;
       left:0;
-      background:white;
       z-index:5;
-      border-right:2px solid #ddd;
+      border-right:2px solid #e0e0e0;
+      font-weight:600;
+      white-space:nowrap;
     }
     .name-header{
       position:sticky;
       left:0;
-      background:#fafafa;
       z-index:15;
-      border-right:2px solid #ddd;
+      border-right:2px solid #e0e0e0;
     }
-    th{
-      text-align:left;
-      padding:8px 12px;
-      border-bottom:1px solid #eee;
-      cursor:pointer;
-      user-select:none;
-      font-size:14px;
-      white-space:nowrap;
+    tbody tr:nth-child(even) .name-column{
+      background:#fafbfc;
     }
-    th:hover{
-      background:#f0f0f0;
+    tbody tr:nth-child(odd) .name-column{
+      background:#fff;
     }
-    td{
-      padding:8px 12px;
-      border-bottom:1px solid #f2f2f2;
-      font-size:14px;
-    }
-    .name-column td{
-      font-weight:500;
-      background:white;
+    tbody tr:hover .name-column{
+      background:#e8f0fe !important;
     }
     .sort-indicator{
       margin-left:4px;
-      color:#666;
+      color:#1a73e8;
+      font-weight:700;
     }
-    
+
+    /* 車検満期日の色分け */
+    .urgency-high{
+      background:#fce4ec !important;
+      color:#c62828;
+      font-weight:700;
+      border-radius:4px;
+      padding:4px 8px;
+      display:inline-block;
+    }
+    .urgency-medium{
+      background:#fff8e1 !important;
+      color:#f57f17;
+      font-weight:600;
+      border-radius:4px;
+      padding:4px 8px;
+      display:inline-block;
+    }
+    .urgency-low{
+      background:#e8f5e9 !important;
+      color:#2e7d32;
+      font-weight:500;
+      border-radius:4px;
+      padding:4px 8px;
+      display:inline-block;
+    }
+
+    /* 空結果 */
+    .empty-state{
+      text-align:center;
+      padding:60px 20px;
+      color:#999;
+    }
+    .empty-state-icon{
+      font-size:48px;
+      margin-bottom:12px;
+    }
+    .empty-state-text{
+      font-size:16px;
+      margin-bottom:8px;
+    }
+    .empty-state-hint{
+      font-size:13px;
+      color:#bbb;
+    }
+
+    /* ローディング */
+    .loading{
+      text-align:center;
+      padding:80px 20px;
+    }
+    .loading-spinner{
+      width:40px;
+      height:40px;
+      border:4px solid #e0e0e0;
+      border-top:4px solid #1a73e8;
+      border-radius:50%;
+      animation:spin 0.8s linear infinite;
+      margin:0 auto 16px;
+    }
+    @keyframes spin{
+      to{ transform:rotate(360deg); }
+    }
+    .loading-text{
+      color:#888;
+      font-size:15px;
+    }
+
+    /* 列表示トグル */
+    .column-toggle{
+      padding:8px 24px 12px;
+      background:#fafbfc;
+      border-bottom:1px solid #e9ecef;
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .column-toggle-label{
+      font-size:12px;
+      color:#888;
+      font-weight:600;
+      margin-right:4px;
+    }
+    .col-chip{
+      padding:4px 10px;
+      border:1px solid #ddd;
+      border-radius:16px;
+      font-size:12px;
+      cursor:pointer;
+      background:white;
+      color:#666;
+      transition:all 0.15s;
+      user-select:none;
+    }
+    .col-chip.on{
+      background:#1a73e8;
+      color:white;
+      border-color:#1a73e8;
+    }
+    .col-chip:hover{
+      border-color:#1a73e8;
+    }
+
+    /* 行詳細モーダル */
+    .detail-overlay{
+      display:none;
+      position:fixed;
+      top:0;left:0;right:0;bottom:0;
+      background:rgba(0,0,0,0.4);
+      z-index:100;
+      justify-content:center;
+      align-items:center;
+    }
+    .detail-overlay.show{
+      display:flex;
+    }
+    .detail-card{
+      background:white;
+      border-radius:16px;
+      padding:32px;
+      max-width:560px;
+      width:90%;
+      max-height:80vh;
+      overflow-y:auto;
+      box-shadow:0 20px 60px rgba(0,0,0,0.2);
+      position:relative;
+    }
+    .detail-close{
+      position:absolute;
+      top:16px;
+      right:16px;
+      background:none;
+      border:none;
+      font-size:24px;
+      cursor:pointer;
+      color:#999;
+      width:36px;
+      height:36px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .detail-close:hover{
+      background:#f0f0f0;
+      color:#333;
+    }
+    .detail-name{
+      font-size:22px;
+      font-weight:700;
+      margin-bottom:4px;
+    }
+    .detail-kana{
+      font-size:13px;
+      color:#999;
+      margin-bottom:20px;
+    }
+    .detail-section{
+      margin-bottom:16px;
+    }
+    .detail-section-title{
+      font-size:12px;
+      font-weight:700;
+      color:#1a73e8;
+      text-transform:uppercase;
+      letter-spacing:1px;
+      margin-bottom:8px;
+      padding-bottom:4px;
+      border-bottom:1px solid #eee;
+    }
+    .detail-row{
+      display:flex;
+      padding:6px 0;
+      font-size:14px;
+    }
+    .detail-label{
+      width:120px;
+      color:#888;
+      flex-shrink:0;
+    }
+    .detail-value{
+      color:#333;
+      font-weight:500;
+    }
+
     /* スマホ対応 */
     @media (max-width: 768px) {
-      body{
-        margin:8px;
-      }
-      .header-container{
-        padding:12px 16px;
-        flex-direction:column;
-        gap:12px;
-        align-items:stretch;
-      }
-      h1{
-        font-size:16px;
-        text-align:center;
-      }
-      .menu-buttons{
-        justify-content:center;
-      }
-      .menu-btn{
-        flex:1;
-        max-width:150px;
-      }
-      .bulk-contact-panel{
-        padding:12px 16px;
-      }
-      .contact-options{
-        flex-direction:column;
-        align-items:stretch;
-      }
-      .contact-btn{
-        width:100%;
-      }
-      .search-container{
-        padding:12px 16px;
-        flex-direction:column;
-        align-items:stretch;
-      }
-      #q{
-        min-width:auto;
-        font-size:16px;
-      }
-      #meta{
-        text-align:center;
-        margin-top:8px;
-      }
-      th, td{
-        padding:6px 8px;
-        font-size:13px;
-      }
-      .name-column{
-        min-width:120px;
-        max-width:120px;
-      }
-      .name-header{
-        min-width:120px;
-        max-width:120px;
-      }
+      body{ padding:0; }
+      #app{ border-radius:0; }
+      .header-container{ padding:16px; }
+      h1{ font-size:16px; }
+      .tab-btn{ padding:12px 8px; font-size:13px; }
+      .tab-icon{ font-size:16px; }
+      .bulk-contact-panel{ padding:16px; }
+      .workflow{ flex-direction:column; align-items:stretch; }
+      .workflow-arrow{ transform:rotate(90deg); text-align:center; padding:4px 0; }
+      .info-cards{ flex-direction:column; }
+      .action-buttons{ flex-direction:column; }
+      .action-btn{ flex-direction:row; min-width:auto; padding:12px 16px; }
+      .search-container{ padding:12px 16px; }
+      #q{ font-size:16px; }
+      th,td{ padding:8px 10px; font-size:13px; }
+      .column-toggle{ padding:8px 16px; }
+      .detail-card{ padding:24px 16px; }
     }
-    
+
     @media (max-width: 480px) {
-      h1{
-        font-size:14px;
-      }
-      th, td{
-        padding:4px 6px;
-        font-size:12px;
-      }
-      .name-column{
-        min-width:100px;
-        max-width:100px;
-      }
-      .name-header{
-        min-width:100px;
-        max-width:100px;
-      }
+      h1{ font-size:14px; }
+      th,td{ padding:6px 8px; font-size:12px; }
+      .tab-btn{ font-size:12px; gap:4px; }
+    }
+
+    @media print {
+      .header-container,.tab-nav,.bulk-contact-panel,.search-container,.column-toggle{ display:none!important; }
+      #tbl{ min-width:auto; }
     }
   </style>
 </head>
 <body>
   <div id="app">
+    <!-- ヘッダー -->
     <div class="header-container">
-      <h1>顧客一覧（全件表示・検索）</h1>
-      <div class="menu-buttons">
-        <button id="showAllCustomers" class="menu-btn active">全顧客一覧</button>
-        <button id="showInspectionCustomers" class="menu-btn">車検案内</button>
+      <div class="header-left">
+        <div class="header-logo">🚗</div>
+        <div>
+          <h1>大平自動車商会</h1>
+          <div class="header-subtitle">顧客管理システム</div>
+        </div>
       </div>
     </div>
+
+    <!-- タブナビゲーション -->
+    <div class="tab-nav">
+      <button id="showAllCustomers" class="tab-btn active">
+        <span class="tab-icon">📋</span>
+        全顧客一覧
+        <span class="tab-badge" id="allBadge">-</span>
+      </button>
+      <button id="showInspectionCustomers" class="tab-btn">
+        <span class="tab-icon">🔧</span>
+        車検案内
+        <span class="tab-badge" id="inspectionBadge">-</span>
+      </button>
+    </div>
+
+    <!-- 車検案内パネル -->
     <div class="bulk-contact-panel" id="bulkContactPanel">
-      <div class="inspection-info" id="inspectionInfo"></div>
-      <div class="contact-options">
-        <button class="contact-btn email" id="sendEmail">メール送信</button>
-        <button class="contact-btn document" id="generateDocument">案内文書作成</button>
-        <button class="contact-btn document" id="printAddresses">宛名印刷</button>
-        <button class="contact-btn print" id="printList">一覧印刷</button>
+      <!-- ワークフロー -->
+      <div class="workflow">
+        <div class="workflow-step current">
+          <span class="workflow-step-num">1</span>
+          対象者を確認
+        </div>
+        <span class="workflow-arrow">→</span>
+        <div class="workflow-step">
+          <span class="workflow-step-num">2</span>
+          はがき宛名を印刷
+        </div>
+        <span class="workflow-arrow">→</span>
+        <div class="workflow-step">
+          <span class="workflow-step-num">3</span>
+          案内を投函
+        </div>
+      </div>
+
+      <!-- 情報カード -->
+      <div class="info-cards" id="infoCards"></div>
+
+      <!-- 月選択 -->
+      <div id="monthSelector" class="month-selector"></div>
+
+      <!-- アクションボタン -->
+      <div class="action-buttons">
+        <button class="action-btn" id="printAddresses">
+          <span class="action-btn-icon">🖨️</span>
+          <span class="action-btn-label">宛名印刷</span>
+          <span class="action-btn-desc">はがき宛名面のPDFを作成</span>
+        </button>
+        <button class="action-btn" id="generateDocument">
+          <span class="action-btn-icon">📄</span>
+          <span class="action-btn-label">案内文書</span>
+          <span class="action-btn-desc">お得で安心チラシを表示</span>
+        </button>
+        <button class="action-btn" id="printList">
+          <span class="action-btn-icon">📊</span>
+          <span class="action-btn-label">一覧印刷</span>
+          <span class="action-btn-desc">対象顧客リストを印刷</span>
+        </button>
+        <button class="action-btn" id="sendEmail" disabled>
+          <span class="action-btn-icon">✉️</span>
+          <span class="action-btn-label">メール送信</span>
+          <span class="action-btn-badge">準備中</span>
+        </button>
       </div>
     </div>
+
+    <!-- 検索バー -->
     <div class="search-container">
-      <input id="q" type="search" placeholder="キーワード検索 (例: 氏名, 住所, 車両ナンバー...)" />
+      <div class="search-wrapper">
+        <span class="search-icon">🔍</span>
+        <input id="q" type="search" placeholder="名前・住所・車両ナンバーで検索" />
+      </div>
       <span id="meta"></span>
     </div>
+
+    <!-- 列表示トグル -->
+    <div class="column-toggle" id="columnToggle"></div>
+
+    <!-- テーブル -->
     <div class="table-container">
-      <table id="tbl">
-        <thead>
-          <tr>
-            <th class="sortable name-header" data-column="名　前">名前 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="ふりがな">ふりがな <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="自宅郵便番号">郵便番号 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="自宅住所1">自宅住所 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="自宅住所2">自宅住所2 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="携帯番号">携帯番号 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="自宅電話番号">自宅電話番号 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="会社名">会社名 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="会社郵便番号">会社郵便番号 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="車　名">車名 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="車両ナンバー">車両ナンバー <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="車台番号">車台番号 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="型式・年式番号">型式 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="類別番号">類別番号 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="初年度">初年度 <span class="sort-indicator"></span></th>
-            <th class="sortable" data-column="次回車検満期日">次回車検満期日 <span class="sort-indicator"></span></th>
-          </tr>
-        </thead>
+      <div class="loading" id="loadingState">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">顧客データを読み込んでいます...</div>
+      </div>
+      <table id="tbl" style="display:none;">
+        <thead><tr id="tableHead"></tr></thead>
         <tbody></tbody>
       </table>
+      <div class="empty-state" id="emptyState" style="display:none;">
+        <div class="empty-state-icon">🔍</div>
+        <div class="empty-state-text">該当する顧客がいません</div>
+        <div class="empty-state-hint">検索キーワードを変えてみてください</div>
+      </div>
     </div>
   </div>
+
+  <!-- 詳細モーダル -->
+  <div class="detail-overlay" id="detailOverlay">
+    <div class="detail-card" id="detailCard">
+      <button class="detail-close" id="detailClose">✕</button>
+      <div id="detailContent"></div>
+    </div>
+  </div>
+
   <script>
-    const headers = [
-      '名　前','ふりがな','自宅郵便番号','自宅住所1','自宅住所2','携帯番号','自宅電話番号','会社名','会社郵便番号','車　名','車両ナンバー','車台番号','型式・年式番号','類別番号','初年度','次回車検満期日'
+    // ========================================
+    // 列定義
+    // ========================================
+    const ALL_COLUMNS = [
+      { key:'顧客番号', label:'コード', default:true },
+      { key:'名　前', label:'名前', default:true, sticky:true },
+      { key:'ふりがな', label:'ふりがな', default:false },
+      { key:'自宅郵便番号', label:'郵便番号', default:false },
+      { key:'自宅住所1', label:'住所', default:true },
+      { key:'自宅住所2', label:'住所2', default:false },
+      { key:'携帯番号', label:'携帯番号', default:true },
+      { key:'自宅電話番号', label:'自宅電話', default:false },
+      { key:'会社名', label:'会社名', default:false },
+      { key:'会社郵便番号', label:'会社〒', default:false },
+      { key:'車　名', label:'車名', default:true },
+      { key:'車両ナンバー', label:'車両ナンバー', default:true },
+      { key:'車台番号', label:'車台番号', default:false },
+      { key:'型式・年式番号', label:'型式', default:false },
+      { key:'類別番号', label:'類別番号', default:false },
+      { key:'初年度', label:'初年度', default:false },
+      { key:'次回車検満期日', label:'車検満期日', default:true },
     ];
-    const tbody = () => document.querySelector('#tbl tbody');
-    const meta = () => document.querySelector('#meta');
+
+    // ========================================
+    // 状態管理
+    // ========================================
+    const headers = ALL_COLUMNS.map(c => c.key);
+    let visibleColumns = ALL_COLUMNS.filter(c => c.default).map(c => c.key);
     let allRows = [];
     let currentRows = [];
     let inspectionRows = [];
     let sortColumn = null;
     let sortDirection = 'asc';
-    let currentMode = 'all'; // 'all' or 'inspection'
-    const fmt = (v) => v==null? '': String(v);
+    let currentMode = 'all';
+    let selectedMonths = new Set(); // 宛名印刷用の月選択
+
+    const fmt = (v) => v == null ? '' : String(v);
+    const normalize = (s) => fmt(s).toLowerCase();
+    const tbody = () => document.querySelector('#tbl tbody');
+
     const SENDER_INFO = {
       postalCode: '751-0804',
       lines: ['山口県下関市楠乃５丁目９', '大平自動車商会', 'TEL: 083-257-0101']
     };
-    const normalize = (s) => fmt(s).toLowerCase();
 
-    function render(rows){
+    // ========================================
+    // 列トグルUI
+    // ========================================
+    function renderColumnToggle() {
+      const container = document.getElementById('columnToggle');
+      container.innerHTML = '<span class="column-toggle-label">表示列:</span>';
+      ALL_COLUMNS.forEach(col => {
+        if (col.sticky) return; // 名前列は常に表示
+        const chip = document.createElement('button');
+        chip.className = 'col-chip' + (visibleColumns.includes(col.key) ? ' on' : '');
+        chip.textContent = col.label;
+        chip.addEventListener('click', () => {
+          if (visibleColumns.includes(col.key)) {
+            visibleColumns = visibleColumns.filter(k => k !== col.key);
+          } else {
+            visibleColumns.push(col.key);
+          }
+          chip.classList.toggle('on');
+          renderTableHeader();
+          render(currentRows);
+        });
+        container.appendChild(chip);
+      });
+    }
+
+    // ========================================
+    // テーブルヘッダー
+    // ========================================
+    function renderTableHeader() {
+      const head = document.getElementById('tableHead');
+      head.innerHTML = '';
+      const cols = ALL_COLUMNS.filter(c => c.sticky || visibleColumns.includes(c.key));
+      cols.forEach(col => {
+        const th = document.createElement('th');
+        th.className = 'sortable' + (col.sticky ? ' name-header' : '');
+        th.dataset.column = col.key;
+        th.innerHTML = col.label + ' <span class="sort-indicator"></span>';
+        th.addEventListener('click', () => {
+          if (sortColumn === col.key) {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+          } else {
+            sortColumn = col.key;
+            sortDirection = 'asc';
+          }
+          sortRows(sortColumn, sortDirection);
+        });
+        head.appendChild(th);
+      });
+    }
+
+    // ========================================
+    // テーブル描画
+    // ========================================
+    function render(rows) {
       currentRows = [...rows];
       const tb = tbody();
       tb.innerHTML = '';
+      const tbl = document.getElementById('tbl');
+      const empty = document.getElementById('emptyState');
+
+      if (rows.length === 0 && allRows.length > 0) {
+        tbl.style.display = 'none';
+        empty.style.display = 'block';
+      } else {
+        tbl.style.display = 'table';
+        empty.style.display = 'none';
+      }
+
+      const cols = ALL_COLUMNS.filter(c => c.sticky || visibleColumns.includes(c.key));
       const frag = document.createDocumentFragment();
-      for(const r of rows){
+
+      for (const r of rows) {
         const tr = document.createElement('tr');
-        for(let i = 0; i < headers.length; i++){
-          const h = headers[i];
+        tr.addEventListener('click', () => showDetail(r));
+
+        for (const col of cols) {
           const td = document.createElement('td');
-          td.textContent = fmt(r[h]);
-          
-          // 名前列（最初の列）には固定クラスを追加
-          if (i === 0) {
-            td.classList.add('name-column');
+          if (col.sticky) td.classList.add('name-column');
+
+          if (col.key === '次回車検満期日') {
+            const val = fmt(r[col.key]);
+            if (val) {
+              const span = document.createElement('span');
+              span.textContent = val;
+              span.className = getUrgencyClass(val);
+              td.appendChild(span);
+            }
+          } else {
+            td.textContent = fmt(r[col.key]);
           }
-          
+
           tr.appendChild(td);
         }
         frag.appendChild(tr);
       }
       tb.appendChild(frag);
-      meta().textContent = `${rows.length} 件 / 全 ${allRows.length} 件`;
+
+      // メタ情報
+      const total = currentMode === 'inspection' ? inspectionRows.length : allRows.length;
+      document.getElementById('meta').textContent = `${rows.length} 件 / ${total} 件`;
       updateSortIndicators();
     }
 
+    // ========================================
+    // 車検満期日の緊急度
+    // ========================================
+    function getUrgencyClass(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      const today = new Date();
+      const diffDays = Math.floor((date - today) / (1000 * 60 * 60 * 24));
+      if (diffDays <= 30) return 'urgency-high';
+      if (diffDays <= 60) return 'urgency-medium';
+      return 'urgency-low';
+    }
+
+    // ========================================
+    // ソート
+    // ========================================
     function sortRows(column, direction) {
       const sorted = [...currentRows].sort((a, b) => {
-        let valA = a[column];
-        let valB = b[column];
-        
-        // 日付データの場合は日付として比較
+        let valA = a[column], valB = b[column];
         if (column === '次回車検満期日' || column === '初年度') {
-          // 日付文字列（YYYY/MM/DD形式）を比較
           if (fmt(valA) === '' && fmt(valB) === '') return 0;
           if (fmt(valA) === '') return direction === 'asc' ? 1 : -1;
           if (fmt(valB) === '') return direction === 'asc' ? -1 : 1;
-          
-          // 日付文字列をDateオブジェクトに変換して比較
           valA = new Date(fmt(valA));
           valB = new Date(fmt(valB));
         } else {
-          // 文字列データの場合は文字列として比較
           valA = fmt(valA).toLowerCase();
           valB = fmt(valB).toLowerCase();
         }
-        
         if (valA < valB) return direction === 'asc' ? -1 : 1;
         if (valA > valB) return direction === 'asc' ? 1 : -1;
         return 0;
       });
-      
       render(sorted);
     }
 
     function updateSortIndicators() {
-      document.querySelectorAll('.sort-indicator').forEach(indicator => {
-        indicator.textContent = '';
-      });
-      
+      document.querySelectorAll('.sort-indicator').forEach(i => i.textContent = '');
       if (sortColumn) {
-        const currentIndicator = document.querySelector(`[data-column="${sortColumn}"] .sort-indicator`);
-        if (currentIndicator) {
-          currentIndicator.textContent = sortDirection === 'asc' ? ' ↑' : ' ↓';
-        }
+        const el = document.querySelector(`[data-column="${sortColumn}"] .sort-indicator`);
+        if (el) el.textContent = sortDirection === 'asc' ? ' ↑' : ' ↓';
       }
     }
 
+    // ========================================
+    // 詳細モーダル
+    // ========================================
+    function showDetail(row) {
+      const overlay = document.getElementById('detailOverlay');
+      const content = document.getElementById('detailContent');
+
+      const sections = [
+        {
+          title: '基本情報',
+          fields: [
+            ['コード', fmt(row['顧客番号'])],
+            ['名前', fmt(row['名　前'])],
+            ['ふりがな', fmt(row['ふりがな'])],
+          ]
+        },
+        {
+          title: '連絡先',
+          fields: [
+            ['郵便番号', fmt(row['自宅郵便番号'])],
+            ['住所', fmt(row['自宅住所1']) + ' ' + fmt(row['自宅住所2'])],
+            ['携帯番号', fmt(row['携帯番号'])],
+            ['自宅電話', fmt(row['自宅電話番号'])],
+            ['会社名', fmt(row['会社名'])],
+            ['会社郵便番号', fmt(row['会社郵便番号'])],
+          ]
+        },
+        {
+          title: '車両情報',
+          fields: [
+            ['車名', fmt(row['車　名'])],
+            ['車両ナンバー', fmt(row['車両ナンバー'])],
+            ['車台番号', fmt(row['車台番号'])],
+            ['型式', fmt(row['型式・年式番号'])],
+            ['類別番号', fmt(row['類別番号'])],
+            ['初年度', fmt(row['初年度'])],
+            ['車検満期日', fmt(row['次回車検満期日'])],
+          ]
+        },
+      ];
+
+      let html = `<div class="detail-name">${fmt(row['名　前'])} 様</div>`;
+      html += `<div class="detail-kana">${fmt(row['ふりがな'])}</div>`;
+
+      for (const sec of sections) {
+        html += `<div class="detail-section"><div class="detail-section-title">${sec.title}</div>`;
+        for (const [label, value] of sec.fields) {
+          if (!value || value.trim() === '') continue;
+          html += `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value">${value}</div></div>`;
+        }
+        html += '</div>';
+      }
+
+      content.innerHTML = html;
+      overlay.classList.add('show');
+    }
+
+    document.getElementById('detailClose').addEventListener('click', () => {
+      document.getElementById('detailOverlay').classList.remove('show');
+    });
+    document.getElementById('detailOverlay').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) {
+        e.currentTarget.classList.remove('show');
+      }
+    });
+
+    // ========================================
+    // 車検フィルター（1年先まで）
+    // ========================================
     function filterInspectionCustomers() {
       const today = new Date();
-      const currentMonth = today.getMonth();
-      const currentYear = today.getFullYear();
-      
-      // 3ヶ月先の月末を計算
-      const targetMonth = new Date(currentYear, currentMonth + 4, 0); // 3ヶ月先の月末
-      
+      const targetMonth = new Date(today.getFullYear(), today.getMonth() + 13, 0); // 1年先の月末
+
       inspectionRows = allRows.filter(row => {
-        const inspectionDate = row['次回車検満期日'];
-        if (!inspectionDate || inspectionDate === '') return false;
-        
-        const date = new Date(inspectionDate);
+        const d = row['次回車検満期日'];
+        if (!d || d === '') return false;
+        const date = new Date(d);
         return date >= today && date <= targetMonth;
       });
-      
-      // 車検期限情報を表示
+
       updateInspectionInfo();
-      
       return inspectionRows;
     }
 
-    function updateInspectionInfo() {
-      const infoElement = document.getElementById('inspectionInfo');
-      const today = new Date();
-      const currentMonth = today.getMonth();
-      const currentYear = today.getFullYear();
-      const targetMonth = new Date(currentYear, currentMonth + 4, 0);
+    // 月別に顧客をグループ化
+    function groupByMonth(rows) {
+      const groups = {};
+      rows.forEach(row => {
+        const d = row['次回車検満期日'];
+        if (!d) return;
+        const date = new Date(d);
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(row);
+      });
+      return groups;
+    }
 
+    // 選択された月の顧客を取得
+    function getSelectedMonthCustomers() {
+      if (selectedMonths.size === 0) return inspectionRows;
+      return inspectionRows.filter(row => {
+        const d = row['次回車検満期日'];
+        if (!d) return false;
+        const date = new Date(d);
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        return selectedMonths.has(key);
+      });
+    }
+
+    function updateInspectionInfo() {
+      const today = new Date();
+      const targetMonth = new Date(today.getFullYear(), today.getMonth() + 13, 0);
       const todayStr = today.toLocaleDateString('ja-JP');
       const targetStr = targetMonth.toLocaleDateString('ja-JP');
 
-      infoElement.innerHTML = `
-        <strong>📅 車検期限案内対象期間:</strong> ${todayStr} ～ ${targetStr}<br>
-        <strong>👥 対象顧客数:</strong> ${inspectionRows.length}件<br>
-        <em>※ 今月から3ヶ月先までの車検満期日が設定されている顧客を表示しています</em>
+      // 月別グループ
+      const groups = groupByMonth(inspectionRows);
+      const sortedKeys = Object.keys(groups).sort();
+
+      // 月選択チップを生成
+      let monthChipsHtml = '';
+      sortedKeys.forEach(key => {
+        const [y, m] = key.split('-');
+        const label = `${y}年${parseInt(m)}月`;
+        const count = groups[key].length;
+        const isSelected = selectedMonths.has(key);
+        monthChipsHtml += `<button class="month-chip${isSelected ? ' selected' : ''}" data-month="${key}">${label}（${count}件）</button>`;
+      });
+
+      document.getElementById('infoCards').innerHTML = `
+        <div class="info-card">
+          <div class="info-card-label">対象期間</div>
+          <div class="info-card-value" style="font-size:14px;">${todayStr} 〜 ${targetStr}</div>
+        </div>
+        <div class="info-card">
+          <div class="info-card-label">合計</div>
+          <div class="info-card-value highlight">${inspectionRows.length}件</div>
+        </div>
       `;
+
+      // 月選択UIを描画
+      const monthSelector = document.getElementById('monthSelector');
+      monthSelector.innerHTML = `
+        <div class="month-selector-label">印刷対象月を選択:</div>
+        <div class="month-chips">
+          <button class="month-chip select-all${selectedMonths.size === 0 ? ' selected' : ''}" id="monthSelectAll">全月</button>
+          ${monthChipsHtml}
+        </div>
+        <div class="month-selected-info" id="monthSelectedInfo">
+          ${selectedMonths.size === 0 ? `全${inspectionRows.length}件が印刷対象` : `${getSelectedMonthCustomers().length}件が印刷対象`}
+        </div>
+      `;
+
+      // 月チップのクリックイベント
+      monthSelector.querySelectorAll('.month-chip[data-month]').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const month = chip.dataset.month;
+          if (selectedMonths.has(month)) {
+            selectedMonths.delete(month);
+          } else {
+            selectedMonths.add(month);
+          }
+          updateMonthChipUI();
+        });
+      });
+
+      document.getElementById('monthSelectAll').addEventListener('click', () => {
+        selectedMonths.clear();
+        updateMonthChipUI();
+      });
+
+      document.getElementById('inspectionBadge').textContent = inspectionRows.length;
     }
 
-    async function load(){
-      try{
-        const res = await fetch('/api/customers');
-        const j = await res.json();
-        allRows = j.rows ?? [];
-        render(allRows);
-      }catch(e){
-        document.querySelector('#app').innerHTML = '<p style="color:red">読み込みに失敗しました。</p>';
+    function updateMonthChipUI() {
+      // チップの選択状態を更新
+      document.querySelectorAll('.month-chip[data-month]').forEach(chip => {
+        chip.classList.toggle('selected', selectedMonths.has(chip.dataset.month));
+      });
+      const allBtn = document.getElementById('monthSelectAll');
+      if (allBtn) allBtn.classList.toggle('selected', selectedMonths.size === 0);
+
+      // 件数表示を更新
+      const info = document.getElementById('monthSelectedInfo');
+      if (info) {
+        const count = selectedMonths.size === 0 ? inspectionRows.length : getSelectedMonthCustomers().length;
+        info.textContent = `${count}件が印刷対象`;
       }
     }
 
-    function setupSearch(){
-      const input = document.querySelector('#q');
+    // ========================================
+    // データ読み込み
+    // ========================================
+    async function load() {
+      try {
+        const res = await fetch('/api/customers');
+        const j = await res.json();
+        allRows = j.rows ?? [];
+
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('tbl').style.display = 'table';
+        document.getElementById('allBadge').textContent = allRows.length;
+
+        // 車検バッジも事前計算
+        filterInspectionCustomers();
+
+        render(allRows);
+      } catch (e) {
+        document.getElementById('loadingState').innerHTML = `
+          <div style="color:#c62828;font-size:16px;margin-bottom:12px;">データの読み込みに失敗しました</div>
+          <button onclick="location.reload()" style="padding:10px 24px;border:none;background:#1a73e8;color:white;border-radius:8px;cursor:pointer;font-size:14px;">再読み込み</button>
+        `;
+      }
+    }
+
+    // ========================================
+    // 検索
+    // ========================================
+    function setupSearch() {
+      const input = document.getElementById('q');
       let last = '';
       input.addEventListener('input', () => {
         const q = normalize(input.value.trim());
-        if(q === last){ return; }
+        if (q === last) return;
         last = q;
-        
-        // 現在のモードに応じて検索対象を決定
         const searchTarget = currentMode === 'inspection' ? inspectionRows : allRows;
-        
-        if(!q){ 
-          render(searchTarget); 
-          return; 
-        }
-        
+        if (!q) { render(searchTarget); return; }
         const filtered = searchTarget.filter(r => {
-          for(const h of headers){
-            if(normalize(r[h]).includes(q)) return true;
+          for (const h of headers) {
+            if (normalize(r[h]).includes(q)) return true;
           }
           return false;
         });
@@ -471,97 +1171,55 @@
       });
     }
 
-    function setupSorting(){
-      document.querySelectorAll('.sortable').forEach(th => {
-        th.addEventListener('click', () => {
-          const column = th.getAttribute('data-column');
-          
-          if (sortColumn === column) {
-            // 同じ列をクリックした場合は昇順/降順を切り替え
-            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-          } else {
-            // 新しい列をクリックした場合は昇順で開始
-            sortColumn = column;
-            sortDirection = 'asc';
-          }
-          
-          sortRows(sortColumn, sortDirection);
-        });
-      });
-    }
-
+    // ========================================
+    // タブ切替
+    // ========================================
     function setupMenuButtons() {
-      const showAllBtn = document.getElementById('showAllCustomers');
-      const showInspectionBtn = document.getElementById('showInspectionCustomers');
-      const bulkPanel = document.getElementById('bulkContactPanel');
-      const title = document.querySelector('h1');
-      
-      showAllBtn.addEventListener('click', () => {
+      const allBtn = document.getElementById('showAllCustomers');
+      const inspBtn = document.getElementById('showInspectionCustomers');
+      const panel = document.getElementById('bulkContactPanel');
+      const q = document.getElementById('q');
+
+      allBtn.addEventListener('click', () => {
         currentMode = 'all';
-        showAllBtn.classList.add('active');
-        showInspectionBtn.classList.remove('active');
-        bulkPanel.classList.remove('show');
-        title.textContent = '顧客一覧（全件表示・検索）';
-        
-        // 検索ボックスのプレースホルダーを変更
-        document.getElementById('q').placeholder = 'キーワード検索 (例: 氏名, 住所, 車両ナンバー...)';
-        
+        allBtn.classList.add('active');
+        inspBtn.classList.remove('active');
+        panel.classList.remove('show');
+        q.placeholder = '名前・住所・車両ナンバーで検索';
+        q.value = '';
         render(allRows);
       });
-      
-      showInspectionBtn.addEventListener('click', () => {
+
+      inspBtn.addEventListener('click', () => {
         currentMode = 'inspection';
-        showInspectionBtn.classList.add('active');
-        showAllBtn.classList.remove('active');
-        bulkPanel.classList.add('show');
-        title.textContent = '車検期限案内対象顧客';
-        
-        // 検索ボックスのプレースホルダーを変更
-        document.getElementById('q').placeholder = '車検対象顧客を検索 (例: 氏名, 車両ナンバー...)';
-        
+        inspBtn.classList.add('active');
+        allBtn.classList.remove('active');
+        panel.classList.add('show');
+        q.placeholder = '車検対象顧客を検索';
+        q.value = '';
         const filtered = filterInspectionCustomers();
         render(filtered);
       });
     }
 
+    // ========================================
+    // アクションボタン
+    // ========================================
     function setupBulkContact() {
-      const sendEmailBtn = document.getElementById('sendEmail');
-      const generateDocBtn = document.getElementById('generateDocument');
-      const printBtn = document.getElementById('printList');
-      const printAddressesBtn = document.getElementById('printAddresses');
-      
-      sendEmailBtn.addEventListener('click', () => {
-        if (inspectionRows.length === 0) {
-          alert('車検対象顧客がいません。');
-          return;
-        }
-        alert(`メール送信機能は開発中です。\n対象顧客: ${inspectionRows.length}件\n\n将来的に以下の機能を予定:\n・一斉メール送信\n・テンプレート選択\n・個別カスタマイズ`);
-      });
-      
-      generateDocBtn.addEventListener('click', () => {
-        if (inspectionRows.length === 0) {
-          alert('車検対象顧客がいません。');
-          return;
-        }
+      document.getElementById('generateDocument').addEventListener('click', () => {
+        if (inspectionRows.length === 0) { alert('車検対象顧客がいません。'); return; }
         generateInspectionDocuments();
       });
-      
-      printAddressesBtn.addEventListener('click', () => {
-        if (inspectionRows.length === 0) {
-          alert('車検対象顧客がいません。');
-          return;
-        }
-        
-        // プレビューを直接表示（プレビュー内にPDFダウンロードボタンあり）
+
+      document.getElementById('printAddresses').addEventListener('click', () => {
+        if (inspectionRows.length === 0) { alert('車検対象顧客がいません。'); return; }
+        const targetRows = getSelectedMonthCustomers();
+        if (targetRows.length === 0) { alert('選択された月に対象顧客がいません。'); return; }
         showPostcardPreview();
       });
 
-      printBtn.addEventListener('click', () => {
-        if (inspectionRows.length === 0) {
-          alert('車検対象顧客がいません。');
-          return;
-        }
-        // 印刷用のウィンドウを開く
+      document.getElementById('printList').addEventListener('click', () => {
+        if (inspectionRows.length === 0) { alert('車検対象顧客がいません。'); return; }
         const printContent = generatePrintContent();
         const printWindow = window.open('', '_blank');
         printWindow.document.write(printContent);
@@ -572,804 +1230,185 @@
 
     function generateInspectionDocuments() {
       const link = document.getElementById('otokuPdf');
-      if (!link) {
-        alert('案内文書のテンプレートが見つかりません。');
-        return;
-      }
+      if (!link) { alert('案内文書のテンプレートが見つかりません。'); return; }
       window.open(link.href, '_blank');
     }
 
     function showPostcardPreview() {
-      const content = generateAddressPostcardsWithControls();
+      const targetRows = getSelectedMonthCustomers();
+      if (targetRows.length === 0) { alert('選択された月に対象顧客がいません。'); return; }
+      const content = generateAddressPostcardsWithControls(targetRows);
       const win = window.open('', '_blank');
-      if (!win) {
-        alert('ポップアップがブロックされました。許可してください。');
-        return;
-      }
+      if (!win) { alert('ポップアップがブロックされました。許可してください。'); return; }
       win.document.write(content);
       win.document.close();
       win.focus();
     }
-    
-    // 後方互換性のため残す
-    function printPostcardAddresses() {
-      showPostcardPreview();
-    }
 
-    async function downloadHagakiPDF() {
-      const btn = document.getElementById('printAddresses');
-      const originalText = btn.textContent;
+    // ========================================
+    // はがき生成（既存ロジック維持）
+    // ========================================
+    function generateAddressPostcardsWithControls(rows) {
+      const targetRows = rows || inspectionRows;
+      const baseHTML = generateAddressPostcards(targetRows);
+      const customerCount = targetRows.length;
+      const customerIdsJSON = JSON.stringify(targetRows.map(r => r['顧客番号']));
 
-      try {
-        // 車検対象顧客のIDを取得
-        const customerIds = inspectionRows.map(row => row['顧客番号'] || 'all');
-
-        // ローディング表示
-        btn.textContent = '⏳ PDF生成中...';
-        btn.disabled = true;
-
-        // API呼び出し（相対パス使用）
-        const response = await fetch('/api/generate-hagaki-pdf', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ customerIds }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'PDF生成に失敗しました');
-        }
-
-        // PDFをダウンロード
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'hagaki_' + new Date().toISOString().slice(0, 10) + '.pdf';
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
-
-        // 成功表示
-        btn.textContent = '✓ ダウンロード完了';
-        setTimeout(() => {
-          btn.textContent = originalText;
-        }, 2000);
-      } catch (error) {
-        console.error('PDF生成エラー:', error);
-        alert('PDF生成に失敗しました: ' + error.message);
-        btn.textContent = originalText;
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    function generateAddressPostcardsWithControls() {
-      const baseHTML = generateAddressPostcards();
-      const customerCount = inspectionRows.length;
-      const customerIdsJSON = JSON.stringify(inspectionRows.map(r => r['顧客番号']));
-      
-      // コントロールパネルのCSS
       const controlCSS = '<\/style><style>' +
-          '.control-panel {' +
-          '  position: fixed;' +
-          '  top: 0;' +
-          '  left: 0;' +
-          '  right: 0;' +
-          '  background: white;' +
-          '  border-bottom: 2px solid #007bff;' +
-          '  padding: 15px 20px;' +
-          '  box-shadow: 0 2px 8px rgba(0,0,0,0.1);' +
-          '  z-index: 1000;' +
-          '  display: flex;' +
-          '  justify-content: space-between;' +
-          '  align-items: center;' +
-          '}' +
-          '.control-panel h2 {' +
-          '  margin: 0;' +
-          '  font-size: 18px;' +
-          '  color: #333;' +
-          '}' +
-          '.control-buttons {' +
-          '  display: flex;' +
-          '  gap: 12px;' +
-          '}' +
-          '.control-btn {' +
-          '  padding: 10px 20px;' +
-          '  border: none;' +
-          '  border-radius: 6px;' +
-          '  font-size: 14px;' +
-          '  font-weight: 500;' +
-          '  cursor: pointer;' +
-          '  transition: all 0.2s;' +
-          '}' +
-          '.control-btn.primary {' +
-          '  background: #007bff;' +
-          '  color: white;' +
-          '}' +
-          '.control-btn.primary:hover {' +
-          '  background: #0056b3;' +
-          '}' +
-          '.control-btn.secondary {' +
-          '  background: #6c757d;' +
-          '  color: white;' +
-          '}' +
-          '.control-btn.secondary:hover {' +
-          '  background: #545b62;' +
-          '}' +
-          'body {' +
-          '  padding-top: 70px !important;' +
-          '}' +
-          '@media print {' +
-          '  .control-panel {' +
-          '    display: none !important;' +
-          '  }' +
-          '  body {' +
-          '    padding-top: 0 !important;' +
-          '  }' +
-          '}' +
-          '<\/style><\/head>';
-      
-      // コントロールパネルのHTML
+        '.control-panel{position:fixed;top:0;left:0;right:0;background:white;border-bottom:2px solid #1a73e8;padding:15px 20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:1000;display:flex;justify-content:space-between;align-items:center;}' +
+        '.control-panel h2{margin:0;font-size:18px;color:#333;}' +
+        '.control-buttons{display:flex;gap:12px;}' +
+        '.control-btn{padding:10px 20px;border:none;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;transition:all 0.2s;}' +
+        '.control-btn.primary{background:#1a73e8;color:white;}' +
+        '.control-btn.primary:hover{background:#1557b0;}' +
+        '.control-btn.secondary{background:#6c757d;color:white;}' +
+        '.control-btn.secondary:hover{background:#545b62;}' +
+        'body{padding-top:70px!important;}' +
+        '@media print{.control-panel{display:none!important;}body{padding-top:0!important;}}' +
+        '<\/style><\/head>';
+
       const controlPanel = '<body>' +
-          '<div class="control-panel">' +
-          '<h2>はがき宛名プレビュー（' + customerCount + '件）<\/h2>' +
-          '<div class="control-buttons">' +
-          '<button class="control-btn primary" onclick="downloadPDF()">PDFダウンロード<\/button>' +
-          '<button class="control-btn secondary" onclick="window.print()">印刷<\/button>' +
-          '<\/div>' +
-          '<\/div>' +
-          '<script>' +
-          'async function downloadPDF() {' +
-          '  const btn = document.querySelector(".control-btn.primary");' +
-          '  const originalText = btn.textContent;' +
-          '  try {' +
-          '    const customerIds = ' + customerIdsJSON + ';' +
-          '    btn.textContent = "⏳ PDF生成中...";' +
-          '    btn.disabled = true;' +
-          '    const response = await fetch("/api/generate-hagaki-pdf", {' +
-          '      method: "POST",' +
-          '      headers: { "Content-Type": "application/json" },' +
-          '      body: JSON.stringify({ customerIds })' +
-          '    });' +
-          '    if (!response.ok) {' +
-          '      const errorData = await response.json().catch(() => ({}));' +
-          '      throw new Error(errorData.error || "PDF生成に失敗しました");' +
-          '    }' +
-          '    const blob = await response.blob();' +
-          '    const url = window.URL.createObjectURL(blob);' +
-          '    const a = document.createElement("a");' +
-          '    a.href = url;' +
-          '    a.download = "hagaki_" + new Date().toISOString().slice(0, 10) + ".pdf";' +
-          '    document.body.appendChild(a);' +
-          '    a.click();' +
-          '    a.remove();' +
-          '    window.URL.revokeObjectURL(url);' +
-          '    btn.textContent = "✓ ダウンロード完了";' +
-          '    setTimeout(() => {' +
-          '      btn.textContent = originalText;' +
-          '    }, 2000);' +
-          '  } catch (error) {' +
-          '    console.error("PDF generation error:", error);' +
-          '    alert("PDF生成に失敗しました: " + error.message);' +
-          '    btn.textContent = originalText;' +
-          '  } finally {' +
-          '    btn.disabled = false;' +
-          '  }' +
-          '}' +
-          '<\/script>';
+        '<div class="control-panel">' +
+        '<h2>はがき宛名プレビュー（' + customerCount + '件）<\/h2>' +
+        '<div class="control-buttons">' +
+        '<button class="control-btn primary" onclick="downloadPDF()">PDFダウンロード<\/button>' +
+        '<button class="control-btn secondary" onclick="window.print()">印刷<\/button>' +
+        '<\/div><\/div>' +
+        '<script>' +
+        'async function downloadPDF(){' +
+        'const btn=document.querySelector(".control-btn.primary");const ot=btn.textContent;' +
+        'try{const ids=' + customerIdsJSON + ';btn.textContent="PDF生成中...";btn.disabled=true;' +
+        'const r=await fetch("/api/generate-hagaki-pdf",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({customerIds:ids})});' +
+        'if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||"PDF生成に失敗しました");}' +
+        'const b=await r.blob();const u=window.URL.createObjectURL(b);const a=document.createElement("a");' +
+        'a.href=u;a.download="hagaki_"+new Date().toISOString().slice(0,10)+".pdf";document.body.appendChild(a);a.click();a.remove();' +
+        'window.URL.revokeObjectURL(u);btn.textContent="ダウンロード完了";setTimeout(()=>{btn.textContent=ot;},2000);' +
+        '}catch(e){console.error(e);alert("PDF生成に失敗しました: "+e.message);btn.textContent=ot;}finally{btn.disabled=false;}}' +
+        '<\/script>';
 
       return baseHTML.replace('<\/head>', controlCSS).replace('<body>', controlPanel);
     }
-    
-    function generateAddressPostcards() {
-      return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>はがき宛名（両面）</title>
-          <style>
-            @page {
-              size: 100mm 148mm;
-              margin: 0;
-            }
-            body {
-              margin: 0;
-              padding: 0;
-              font-family: 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', '游ゴシック', sans-serif;
-              background: #f0f0f0;
-            }
-            .sheet {
-              width: 100mm;
-              height: 148mm;
-              background: white;
-              margin: 0 auto;
-              page-break-after: always;
-              position: relative;
-              box-sizing: border-box;
-            }
-            .back-page {
-              width: 100mm;
-              height: 148mm;
-              background: white;
-              margin: 0 auto;
-              page-break-after: always;
-              position: relative;
-              box-sizing: border-box;
-              overflow: hidden;
-            }
-            .back-page img {
-              width: 100%;
-              height: 100%;
-              object-fit: contain;
-              display: block;
-            }
-            /* 切手貼付欄 */
-            .stamp-box {
-              position: absolute;
-              top: 8mm;
-              left: 8mm;
-              width: 20mm;
-              height: 25mm;
-              border: 1.5px dashed #333;
-              background: transparent;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 9pt;
-              color: #333;
-              writing-mode: vertical-rl;
-              text-orientation: upright;
-              letter-spacing: 1px;
-            }
-            /* 受取人郵便番号欄 */
-            .recipient-postal {
-              position: absolute;
-              top: 10mm;
-              right: 8mm;
-              display: flex;
-              gap: 1mm;
-            }
-            .postal-box {
-              width: 5.5mm;
-              height: 7mm;
-              border: 1.5px solid #D32F2F;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 14pt;
-              font-weight: bold;
-              color: black;
-              background: white;
-              font-family: "Courier New", monospace;
-            }
-            .postal-separator {
-              width: 2mm;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 16pt;
-              color: #D32F2F;
-            }
-            /* 差出人郵便番号 */
-            .sender-postal {
-              display: flex;
-              gap: 1mm;
-              margin-bottom: 2mm;
-            }
-            .sender-postal-box {
-              width: 4mm;
-              height: 5mm;
-              border: 1px dashed #D32F2F;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 9pt;
-              color: black;
-              background: white;
-              font-family: "Courier New", monospace;
-            }
-            /* 宛名エリア */
-            .recipient-address {
-              position: absolute;
-              top: 25mm;
-              right: 8mm;
-              font-size: 12pt;
-              color: black;
-              writing-mode: vertical-rl;
-              text-orientation: upright;
-              line-height: 1.6;
-              letter-spacing: 1px;
-            }
-            .recipient-address span {
-              display: inline-block;
-              margin-left: 5mm;
-            }
-            .recipient-name {
-              position: absolute;
-              top: 35mm;
-              right: 45mm;
-              font-size: 24pt;
-              font-weight: bold;
-              color: black;
-              writing-mode: vertical-rl;
-              text-orientation: upright;
-              line-height: 1.4;
-              letter-spacing: 3px;
-            }
-            /* 差出人エリア */
-            .sender-block {
-              position: absolute;
-              bottom: 8mm;
-              left: 8mm;
-              width: 70mm;
-            }
-            .sender-info {
-              display: flex;
-              flex-direction: row;
-              gap: 3mm;
-              margin-bottom: 4mm;
-            }
-            .sender-line {
-              font-size: 10pt;
-              color: black;
-              writing-mode: vertical-rl;
-              text-orientation: upright;
-              letter-spacing: 1px;
-              line-height: 1.4;
-            }
-            .sender-postal {
-              display: flex;
-              gap: 1mm;
-              margin-bottom: 2mm;
-            }
-            .sender-postal-box {
-              width: 4mm;
-              height: 5mm;
-              border: 1px dashed #D32F2F;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-size: 9pt;
-              color: black;
-              background: white;
-              font-family: "Courier New", monospace;
-            }
-          </style>
-        </head>
-        <body>
-          ${inspectionRows.map(row => {
-            // 宛名ページ
-            const addressPage = renderAddressCard(row);
-            // 裏面（お得で安心）を画像で表示
-            const backPage = `
-              <div class="back-page">
-                <img src="/otoku-anshin-back.png" alt="お得で安心 車検のご案内" />
-              </div>
-            `;
-            return addressPage + backPage;
-          }).join('')}
-        </body>
-        </html>
-      `;
+
+    function generateAddressPostcards(rows) {
+      const targetRows = rows || inspectionRows;
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>はがき宛名（両面）</title>
+        <style>
+          @page{size:100mm 148mm;margin:0;}
+          body{margin:0;padding:0;font-family:'Noto Sans JP','Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;background:#f0f0f0;}
+          .sheet{width:100mm;height:148mm;background:white;margin:0 auto;page-break-after:always;position:relative;box-sizing:border-box;}
+          .back-page{width:100mm;height:148mm;background:white;margin:0 auto;page-break-after:always;position:relative;box-sizing:border-box;overflow:hidden;}
+          .back-page img{width:100%;height:100%;object-fit:contain;display:block;}
+          .stamp-box{position:absolute;top:8mm;left:8mm;width:20mm;height:25mm;border:1.5px dashed #333;display:flex;align-items:center;justify-content:center;font-size:9pt;color:#333;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:1px;}
+          .recipient-postal{position:absolute;top:10mm;right:8mm;display:flex;gap:1mm;}
+          .postal-box{width:5.5mm;height:7mm;border:1.5px solid #D32F2F;display:flex;align-items:center;justify-content:center;font-size:14pt;font-weight:bold;color:black;background:white;font-family:"Courier New",monospace;}
+          .postal-separator{width:2mm;display:flex;align-items:center;justify-content:center;font-size:16pt;color:#D32F2F;}
+          .sender-postal{display:flex;gap:1mm;margin-bottom:2mm;}
+          .sender-postal-box{width:4mm;height:5mm;border:1px dashed #D32F2F;display:flex;align-items:center;justify-content:center;font-size:9pt;color:black;background:white;font-family:"Courier New",monospace;}
+          .recipient-address{position:absolute;top:25mm;right:8mm;font-size:12pt;color:black;writing-mode:vertical-rl;text-orientation:upright;line-height:1.6;letter-spacing:1px;}
+          .recipient-address span{display:inline-block;margin-left:5mm;}
+          .recipient-name{position:absolute;top:35mm;right:45mm;font-size:24pt;font-weight:bold;color:black;writing-mode:vertical-rl;text-orientation:upright;line-height:1.4;letter-spacing:3px;}
+          .sender-block{position:absolute;bottom:8mm;left:8mm;width:70mm;}
+          .sender-info{display:flex;flex-direction:row;gap:3mm;margin-bottom:4mm;}
+          .sender-line{font-size:10pt;color:black;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:1px;line-height:1.4;}
+        </style></head><body>
+        ${targetRows.map(row => {
+          const addressPage = renderAddressCard(row);
+          const backPage = '<div class="back-page"><img src="/otoku-anshin-back.png" alt="お得で安心 車検のご案内" /></div>';
+          return addressPage + backPage;
+        }).join('')}
+        </body></html>`;
     }
 
     function renderAddressCard(row) {
-      // 受取人情報の取得
       const rawZip = fmt(row['自宅郵便番号']);
       const address1 = fmt(row['自宅住所1']);
       const address2 = fmt(row['自宅住所2']);
       const name = fmt(row['名　前']) || fmt(row['顧客名']) || fmt(row['顧客名（フォルダ）']);
-
-      // 郵便番号の整形
       const formattedZip = formatPostalCode(rawZip);
       const zipDigits = formattedZip.replace(/[^0-9]/g, '');
 
-      // 住所の処理
-      // DBで既に2行に分かれている場合はそのまま使用
-      // 1行しかない場合は自動分割
       let addressLine1, addressLine2;
-      
-      if (address1 && address2) {
-        // 既に2行に分かれている
-        addressLine1 = address1;
-        addressLine2 = address2;
-      } else if (address1 && !address2) {
-        // 1行しかない場合は自動分割
-        const split = splitAddress(address1);
-        addressLine1 = split.line1;
-        addressLine2 = split.line2;
-      } else {
-        addressLine1 = '';
-        addressLine2 = '';
-      }
+      if (address1 && address2) { addressLine1 = address1; addressLine2 = address2; }
+      else if (address1) { const s = splitAddress(address1); addressLine1 = s.line1; addressLine2 = s.line2; }
+      else { addressLine1 = ''; addressLine2 = ''; }
 
-      // 縦書き用に変換
       const verticalAddress1 = convertToVerticalText(addressLine1);
       const verticalAddress2 = convertToVerticalText(addressLine2);
       const verticalName = convertToVerticalText(name);
 
-      // HTML要素の生成
       const postalElement = zipDigits ? `<div class="recipient-postal">${renderPostalDigits(zipDigits)}</div>` : '';
-      const senderZip = formatPostalCode(SENDER_INFO.postalCode);
-      const senderZipDigits = senderZip.replace(/[^0-9]/g, '');
+      const senderZipDigits = formatPostalCode(SENDER_INFO.postalCode).replace(/[^0-9]/g, '');
       const senderPostal = senderZipDigits ? `<div class="sender-postal">${renderPostalDigits(senderZipDigits, true)}</div>` : '';
-      
-      // 住所は複数行に分けて表示（空行は除外）
-      const addressLines = [verticalAddress1, verticalAddress2]
-        .filter(Boolean)
-        .map(line => `<span>${line}</span>`)
-        .join('');
-      
-      // 差出人情報を生成（縦書き用に変換）
+
+      const addressLines = [verticalAddress1, verticalAddress2].filter(Boolean).map(l => `<span>${l}</span>`).join('');
       const senderAddress = convertToVerticalText(SENDER_INFO.lines[0] || '');
       const senderName = convertToVerticalText(SENDER_INFO.lines[1] || '');
       const senderContact = convertToVerticalText(SENDER_INFO.lines[2] || '');
-      
-      // 右から順に：住所、名前、電話番号（縦書きなので配列を逆順にする）
-      const senderInfo = [senderContact, senderName, senderAddress]
-        .filter(Boolean)
-        .map(line => `<div class="sender-line">${line}</div>`)
-        .join('');
-      
-      // 名前と「様」を1行にまとめる
+      const senderInfo = [senderContact, senderName, senderAddress].filter(Boolean).map(l => `<div class="sender-line">${l}</div>`).join('');
       const nameWithHonorific = verticalName ? `<div class="recipient-name">${verticalName}様</div>` : '';
-      
-      // 切手貼付欄
-      const stampBox = `<div class="stamp-box">切手貼付位置</div>`;
 
-      return `
-        <div class="sheet">
-          ${stampBox}
-          ${postalElement}
-          <div class="recipient-address">${addressLines}</div>
-          ${nameWithHonorific}
-          <div class="sender-block">
-            <div class="sender-info">${senderInfo}</div>
-            ${senderPostal}
-          </div>
-        </div>
-      `;
+      return `<div class="sheet"><div class="stamp-box">切手貼付位置</div>${postalElement}<div class="recipient-address">${addressLines}</div>${nameWithHonorific}<div class="sender-block"><div class="sender-info">${senderInfo}</div>${senderPostal}</div></div>`;
     }
 
-    function renderPostalDigits(originalZip, isSender = false) {
-      const digits = originalZip.replace(/[^0-9]/g, '').slice(0, 7);
-      const padded = digits.padEnd(7, ' ');
-      
-      if (isSender) {
-        // 差出人郵便番号（点線枠、小さめ）
-        return padded.split('').map((d, i) => {
-          if (i === 3) {
-            return `<div style="width: 2mm;"></div><span class="sender-postal-box">${d.trim() ? d : ''}</span>`;
-          }
-          return `<span class="sender-postal-box">${d.trim() ? d : ''}</span>`;
-        }).join('');
-      } else {
-        // 受取人郵便番号（赤枠、ハイフン付き）
-        return padded.split('').map((d, i) => {
-          if (i === 3) {
-            return `<div class="postal-separator">ー</div><span class="postal-box">${d.trim() ? d : ''}</span>`;
-          }
-          return `<span class="postal-box">${d.trim() ? d : ''}</span>`;
-        }).join('');
-      }
-    }
-
-    function renderNameColumn(name) {
-      // 既に変換済みの場合もあるため、スペースを除去して1文字ずつspanで囲む
-      const cleaned = name.replace(/[\s　]/g, ''); // 全角・半角スペースを除去
-      return Array.from(cleaned).map(ch => `<span>${ch}</span>`).join('');
+    function renderPostalDigits(zip, isSender = false) {
+      const digits = zip.replace(/[^0-9]/g, '').slice(0, 7).padEnd(7, ' ');
+      return digits.split('').map((d, i) => {
+        const cls = isSender ? 'sender-postal-box' : 'postal-box';
+        const sep = isSender ? `<div style="width:2mm;"></div>` : `<div class="postal-separator">ー</div>`;
+        const box = `<span class="${cls}">${d.trim() ? d : ''}</span>`;
+        return i === 3 ? sep + box : box;
+      }).join('');
     }
 
     // ========================================
-    // はがき宛名用ヘルパー関数群
+    // ヘルパー関数
     // ========================================
-
-    /**
-     * 郵便番号を正規化（xxx-xxxx形式に統一）
-     */
-    function formatPostalCode(zipCode) {
-      if (!zipCode) return '';
-      // 数字のみ抽出
-      const digits = zipCode.replace(/[^0-9]/g, '');
-      if (digits.length !== 7) return zipCode; // 7桁でない場合はそのまま返す
-      // xxx-xxxx形式に整形
-      return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+    function formatPostalCode(zip) {
+      if (!zip) return '';
+      const d = zip.replace(/[^0-9]/g, '');
+      if (d.length !== 7) return zip;
+      return `${d.slice(0,3)}-${d.slice(3)}`;
     }
 
-    /**
-     * 住所を2行に自動分割
-     * スペースがある場合は最初のスペースで分割
-     * スペースがない場合は文字数で判断
-     */
     function splitAddress(address) {
       if (!address) return { line1: '', line2: '' };
-      
-      // 全角・半角スペースで分割を試みる
-      const spaceMatch = address.match(/^([^\s　]+)[\s　]+(.+)$/);
-      if (spaceMatch) {
-        return {
-          line1: spaceMatch[1],
-          line2: spaceMatch[2]
-        };
-      }
-      
-      // スペースがない場合、文字数で判断（40文字以上なら中央で分割）
+      const m = address.match(/^([^\s　]+)[\s　]+(.+)$/);
+      if (m) return { line1: m[1], line2: m[2] };
       if (address.length >= 40) {
-        const midPoint = Math.floor(address.length / 2);
-        return {
-          line1: address.slice(0, midPoint),
-          line2: address.slice(midPoint)
-        };
+        const mid = Math.floor(address.length / 2);
+        return { line1: address.slice(0, mid), line2: address.slice(mid) };
       }
-      
-      // 短い住所はそのまま1行で返す
-      return {
-        line1: address,
-        line2: ''
-      };
+      return { line1: address, line2: '' };
     }
 
-    /**
-     * 縦書き用にテキストを変換
-     * - 半角 → 全角
-     * - ハイフン → 長音記号（縦線表示用）
-     */
     function convertToVerticalText(text) {
       if (!text) return '';
-      
-      // 半角英数字・記号を全角に変換
-      let converted = text.replace(/[!-~]/g, (ch) => {
-        return String.fromCharCode(ch.charCodeAt(0) + 0xFEE0);
-      });
-      
-      // スペースも全角に
-      converted = converted.replace(/ /g, '　');
-      
-      // ハイフンを長音記号に（縦書き時に縦線になる）
-      converted = converted.replace(/[-－]/g, 'ー');
-      
-      return converted;
-    }
-
-    /**
-     * 旧関数（後方互換性のため残す）
-     */
-    function formatVerticalText(text) {
-      return convertToVerticalText(text);
-    }
-
-    function toFullWidth(str) {
-      if (!str) return '';
-      return str.replace(/[!-~]/g, (ch) =>
-        String.fromCharCode(ch.charCodeAt(0) + 0xFEE0)
-      ).replace(/ /g, '　');
-    }
-
-    function generatePostcardDocuments() {
-      const today = new Date();
-      const todayStr = today.toLocaleDateString('ja-JP');
-      
-      return `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>車検期限案内はがき</title>
-          <style>
-            @page {
-              size: 100mm 148mm;
-              margin: 0;
-            }
-            body {
-              font-family: 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Yu Gothic', '游ゴシック', sans-serif;
-              margin: 0;
-              padding: 0;
-              width: 100mm;
-              height: 148mm;
-              box-sizing: border-box;
-            }
-            .postcard {
-              width: 100mm;
-              height: 148mm;
-              border: 1px solid #ccc;
-              box-sizing: border-box;
-              padding: 8mm;
-              page-break-after: always;
-              position: relative;
-            }
-            .header {
-              text-align: center;
-              margin-bottom: 6mm;
-            }
-            .company-name {
-              font-size: 14pt;
-              font-weight: bold;
-              color: #333;
-              margin-bottom: 2mm;
-            }
-            .greeting {
-              font-size: 11pt;
-              color: #666;
-              margin-bottom: 4mm;
-            }
-            .customer-info {
-              background-color: #f8f9fa;
-              padding: 3mm;
-              border-radius: 2mm;
-              margin-bottom: 4mm;
-              font-size: 10pt;
-            }
-            .customer-name {
-              font-size: 12pt;
-              font-weight: bold;
-              margin-bottom: 1mm;
-            }
-            .inspection-info {
-              background-color: #fff3cd;
-              border: 1px solid #ffeaa7;
-              padding: 3mm;
-              border-radius: 2mm;
-              margin-bottom: 4mm;
-            }
-            .inspection-date {
-              font-size: 11pt;
-              font-weight: bold;
-              color: #856404;
-              text-align: center;
-            }
-            .message {
-              font-size: 10pt;
-              line-height: 1.4;
-              margin-bottom: 4mm;
-            }
-            .contact-info {
-              font-size: 9pt;
-              text-align: center;
-              color: #666;
-              border-top: 1px solid #ddd;
-              padding-top: 2mm;
-            }
-            .vehicle-info {
-              font-size: 9pt;
-              color: #555;
-              margin-bottom: 2mm;
-            }
-          </style>
-        </head>
-        <body>
-          ${inspectionRows.map(row => generateSinglePostcard(row, todayStr)).join('')}
-        </body>
-        </html>
-      `;
-    }
-
-    function generateSinglePostcard(customer, todayStr) {
-      const customerName = fmt(customer['名　前']);
-      const customerKana = fmt(customer['ふりがな']);
-      const postalCode = fmt(customer['自宅郵便番号']);
-      const address1 = fmt(customer['自宅住所1']);
-      const address2 = fmt(customer['自宅住所2']);
-      const phone = fmt(customer['携帯番号']) || fmt(customer['自宅電話番号']);
-      const vehicleName = fmt(customer['車　名']);
-      const vehicleNumber = fmt(customer['車両ナンバー']);
-      const inspectionDate = fmt(customer['次回車検満期日']);
-      
-      return `
-        <div class="postcard">
-          <div class="header">
-            <div class="company-name">大平自動車商会</div>
-            <div class="greeting">車検期限のお知らせ</div>
-          </div>
-          
-          <div class="customer-info">
-            <div class="customer-name">${customerName} 様</div>
-            <div>${customerKana}</div>
-            <div>〒${postalCode}</div>
-            <div>${address1} ${address2}</div>
-          </div>
-          
-          <div class="inspection-info">
-            <div class="inspection-date">車検満期日: ${inspectionDate}</div>
-          </div>
-          
-          <div class="vehicle-info">
-            <div>車名: ${vehicleName}</div>
-            <div>車両番号: ${vehicleNumber}</div>
-          </div>
-          
-          <div class="message">
-            いつもお世話になっております。<br>
-            お客様の愛車の車検期限が近づいております。<br>
-            お早めにご連絡いただけますよう、<br>
-            よろしくお願いいたします。<br><br>
-            
-            ご不明な点がございましたら、<br>
-            お気軽にお問い合わせください。
-          </div>
-          
-          <div class="contact-info">
-            <strong>大平自動車商会</strong><br>
-            電話: 083-xxx-xxxx<br>
-            営業時間: 9:00-18:00（日祝除く）
-          </div>
-        </div>
-      `;
+      let c = text.replace(/[!-~]/g, ch => String.fromCharCode(ch.charCodeAt(0) + 0xFEE0));
+      c = c.replace(/ /g, '　');
+      c = c.replace(/[-－]/g, 'ー');
+      return c;
     }
 
     function generatePrintContent() {
-      const today = new Date();
-      const todayStr = today.toLocaleDateString('ja-JP');
-      
-      let content = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>車検期限案内対象顧客一覧</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            h1 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; font-weight: bold; }
-            .info { background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
-          </style>
-        </head>
-        <body>
-          <h1>車検期限案内対象顧客一覧</h1>
-          <div class="info">
-            <strong>作成日:</strong> ${todayStr}<br>
-            <strong>対象期間:</strong> 今月～翌々月<br>
-            <strong>対象顧客数:</strong> ${inspectionRows.length}件
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>名前</th>
-                <th>ふりがな</th>
-                <th>郵便番号</th>
-                <th>住所</th>
-                <th>携帯番号</th>
-                <th>車名</th>
-                <th>車両ナンバー</th>
-                <th>次回車検満期日</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-      
+      const todayStr = new Date().toLocaleDateString('ja-JP');
+      let content = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>車検期限案内対象顧客一覧</title>
+        <style>body{font-family:sans-serif;margin:20px;} h1{color:#333;border-bottom:2px solid #1a73e8;padding-bottom:10px;} table{width:100%;border-collapse:collapse;margin-top:20px;} th,td{border:1px solid #ddd;padding:8px;text-align:left;} th{background:#f2f2f2;font-weight:bold;} .info{background:#e8f0fe;padding:15px;border-radius:5px;margin-bottom:20px;} tr:nth-child(even){background:#fafafa;}</style>
+        </head><body><h1>車検期限案内対象顧客一覧</h1>
+        <div class="info"><strong>作成日:</strong> ${todayStr}<br><strong>対象顧客数:</strong> ${inspectionRows.length}件</div>
+        <table><thead><tr><th>コード</th><th>名前</th><th>郵便番号</th><th>住所</th><th>携帯番号</th><th>車名</th><th>車両ナンバー</th><th>次回車検満期日</th></tr></thead><tbody>`;
       inspectionRows.forEach(row => {
-        content += `
-          <tr>
-            <td>${fmt(row['名　前'])}</td>
-            <td>${fmt(row['ふりがな'])}</td>
-            <td>${fmt(row['自宅郵便番号'])}</td>
-            <td>${fmt(row['自宅住所1'])} ${fmt(row['自宅住所2'])}</td>
-            <td>${fmt(row['携帯番号'])}</td>
-            <td>${fmt(row['車　名'])}</td>
-            <td>${fmt(row['車両ナンバー'])}</td>
-            <td>${fmt(row['次回車検満期日'])}</td>
-          </tr>
-        `;
+        content += `<tr><td>${fmt(row['顧客番号'])}</td><td>${fmt(row['名　前'])}</td><td>${fmt(row['自宅郵便番号'])}</td><td>${fmt(row['自宅住所1'])} ${fmt(row['自宅住所2'])}</td><td>${fmt(row['携帯番号'])}</td><td>${fmt(row['車　名'])}</td><td>${fmt(row['車両ナンバー'])}</td><td>${fmt(row['次回車検満期日'])}</td></tr>`;
       });
-      
-      content += `
-            </tbody>
-          </table>
-        </body>
-        </html>
-      `;
-      
+      content += '</tbody></table></body></html>';
       return content;
     }
 
+    // ========================================
+    // 初期化
+    // ========================================
+    renderColumnToggle();
+    renderTableHeader();
     setupSearch();
-    setupSorting();
     setupMenuButtons();
     setupBulkContact();
     load();
