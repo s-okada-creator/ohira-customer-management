@@ -9,6 +9,7 @@ import puppeteer from 'puppeteer';
 import puppeteerCore from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import { PDFDocument } from 'pdf-lib';
+import multer from 'multer';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,8 +31,105 @@ for (const dir of staticDirCandidates) {
   }
 }
 
+// はがき裏面画像のアップロード設定
+const uploadsDir = path.resolve(process.cwd(), 'src', 'public', 'hagaki-backs');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadsDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      const name = `hagaki-back-${Date.now()}${ext}`;
+      cb(null, name);
+    }
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (_req, file, cb) => {
+    const allowed = ['.png', '.jpg', '.jpeg', '.pdf'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('PNG, JPG, PDFのみアップロード可能です'));
+    }
+  }
+});
+
 app.get('/health', (_req, res) => {
   res.json({ ok: true });
+});
+
+// はがき裏面画像一覧取得
+app.get('/api/hagaki-backs', (_req, res) => {
+  try {
+    const files: { id: string; name: string; url: string; isDefault: boolean }[] = [];
+
+    // デフォルト画像
+    files.push({
+      id: 'default',
+      name: 'お得で安心♪（デフォルト）',
+      url: '/otoku-anshin-back.png',
+      isDefault: true
+    });
+
+    // アップロード済み画像
+    if (fs.existsSync(uploadsDir)) {
+      const entries = fs.readdirSync(uploadsDir);
+      for (const entry of entries) {
+        const ext = path.extname(entry).toLowerCase();
+        if (['.png', '.jpg', '.jpeg', '.pdf'].includes(ext)) {
+          files.push({
+            id: entry,
+            name: entry,
+            url: `/hagaki-backs/${entry}`,
+            isDefault: false
+          });
+        }
+      }
+    }
+
+    res.json({ files });
+  } catch (error) {
+    res.status(500).json({ error: '画像一覧の取得に失敗しました' });
+  }
+});
+
+// はがき裏面画像アップロード
+app.post('/api/hagaki-backs/upload', upload.single('image'), (req: any, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'ファイルが選択されていません' });
+    }
+    const file = req.file;
+    res.json({
+      id: file.filename,
+      name: file.originalname,
+      url: `/hagaki-backs/${file.filename}`,
+      isDefault: false
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'アップロードに失敗しました' });
+  }
+});
+
+// はがき裏面画像削除
+app.delete('/api/hagaki-backs/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    if (id === 'default') {
+      return res.status(400).json({ error: 'デフォルト画像は削除できません' });
+    }
+    const filePath = path.join(uploadsDir, id);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: '削除に失敗しました' });
+  }
 });
 
 type CustomerRow = {
@@ -322,8 +420,8 @@ app.get('/api/customers', async (_req, res) => {
 // はがきPDF生成エンドポイント
 app.post('/api/generate-hagaki-pdf', async (req, res) => {
   try {
-    const { customerIds } = req.body;
-    
+    const { customerIds, backImageId } = req.body;
+
     if (!customerIds || !Array.isArray(customerIds)) {
       return res.status(400).json({ error: '顧客IDが指定されていません' });
     }
@@ -344,16 +442,29 @@ app.post('/api/generate-hagaki-pdf', async (req, res) => {
 
     // はがき宛名PDFを生成
     const addressPdfBytes = await generateAddressPdf(targetCustomers);
-    
-    // お得で安心PDFを読み込み
-    const backPdfPath = path.resolve(process.cwd(), 'src', 'public', 'お得で安心♪.pdf');
-    
-    if (!fs.existsSync(backPdfPath)) {
-      console.error('お得で安心♪.pdfが見つかりません:', backPdfPath);
-      return res.status(500).json({ error: 'お得で安心♪.pdfが見つかりません' });
+
+    // 裏面画像を取得（カスタム or デフォルト）
+    let backPdfBytes: Buffer;
+    if (backImageId && backImageId !== 'default') {
+      const customPath = path.join(uploadsDir, backImageId);
+      if (!fs.existsSync(customPath)) {
+        return res.status(400).json({ error: '指定された裏面画像が見つかりません' });
+      }
+      const ext = path.extname(backImageId).toLowerCase();
+      if (ext === '.pdf') {
+        backPdfBytes = fs.readFileSync(customPath);
+      } else {
+        // 画像ファイル（PNG/JPG）の場合、Puppeteerでハガキサイズに変換
+        backPdfBytes = Buffer.from(await convertImageToPdf(customPath));
+      }
+    } else {
+      const backPdfPath = path.resolve(process.cwd(), 'src', 'public', 'お得で安心♪.pdf');
+      if (!fs.existsSync(backPdfPath)) {
+        console.error('お得で安心♪.pdfが見つかりません:', backPdfPath);
+        return res.status(500).json({ error: 'お得で安心♪.pdfが見つかりません' });
+      }
+      backPdfBytes = fs.readFileSync(backPdfPath);
     }
-    
-    const backPdfBytes = fs.readFileSync(backPdfPath);
     
     // 表面と裏面を結合
     const finalPdf = await combinePdfs(addressPdfBytes, backPdfBytes, targetCustomers.length);
@@ -370,6 +481,50 @@ app.post('/api/generate-hagaki-pdf', async (req, res) => {
     res.status(500).json({ error: 'PDF生成に失敗しました', detail: String(error) });
   }
 });
+
+/**
+ * 画像ファイルをはがきサイズPDFに変換
+ */
+async function convertImageToPdf(imagePath: string): Promise<Uint8Array> {
+  const isVercel = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+  let browser;
+  if (isVercel) {
+    browser = await puppeteerCore.launch({
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: true,
+    });
+  } else {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+  }
+  try {
+    const page = await browser.newPage();
+    const imageData = fs.readFileSync(imagePath);
+    const ext = path.extname(imagePath).toLowerCase();
+    const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
+    const base64 = imageData.toString('base64');
+    const html = `<!DOCTYPE html><html><head><style>
+      @page{size:100mm 148mm;margin:0;}
+      body{margin:0;padding:0;}
+      img{width:100mm;height:148mm;object-fit:contain;display:block;}
+    </style></head><body>
+      <img src="data:${mimeType};base64,${base64}" />
+    </body></html>`;
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({
+      width: '100mm',
+      height: '148mm',
+      printBackground: true,
+      margin: { top: 0, right: 0, bottom: 0, left: 0 }
+    });
+    return new Uint8Array(pdfBuffer);
+  } finally {
+    await browser.close();
+  }
+}
 
 /**
  * はがき宛名PDFを生成（Puppeteerを使用）

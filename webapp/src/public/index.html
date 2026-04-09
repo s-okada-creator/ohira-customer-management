@@ -245,6 +245,114 @@
       border-radius:4px;
     }
 
+    /* はがき裏面画像選択 */
+    .hagaki-back-selector{
+      margin-bottom:20px;
+      padding:16px;
+      background:#f8faff;
+      border:1px solid #e0e0e0;
+      border-radius:10px;
+    }
+    .hagaki-back-selector h4{
+      margin:0 0 12px 0;
+      font-size:14px;
+      color:#333;
+    }
+    .hagaki-back-list{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:flex-start;
+    }
+    .hagaki-back-item{
+      position:relative;
+      width:100px;
+      cursor:pointer;
+      border:3px solid transparent;
+      border-radius:8px;
+      overflow:hidden;
+      transition:all 0.2s;
+      background:white;
+    }
+    .hagaki-back-item.selected{
+      border-color:#1a73e8;
+      box-shadow:0 2px 8px rgba(26,115,232,0.3);
+    }
+    .hagaki-back-item:hover{
+      border-color:#90caf9;
+    }
+    .hagaki-back-item img,
+    .hagaki-back-item .pdf-placeholder{
+      width:100%;
+      height:148px;
+      object-fit:cover;
+      display:block;
+    }
+    .hagaki-back-item .pdf-placeholder{
+      background:#e8e8e8;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:12px;
+      color:#666;
+    }
+    .hagaki-back-item .item-name{
+      font-size:10px;
+      color:#666;
+      padding:4px;
+      text-align:center;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .hagaki-back-item .delete-btn{
+      position:absolute;
+      top:2px;
+      right:2px;
+      background:rgba(220,53,69,0.9);
+      color:white;
+      border:none;
+      border-radius:50%;
+      width:20px;
+      height:20px;
+      font-size:12px;
+      cursor:pointer;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      line-height:1;
+    }
+    .hagaki-back-item:hover .delete-btn{
+      display:flex;
+    }
+    .hagaki-back-upload{
+      width:100px;
+      height:148px;
+      border:2px dashed #ccc;
+      border-radius:8px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      transition:all 0.2s;
+      background:white;
+      gap:4px;
+    }
+    .hagaki-back-upload:hover{
+      border-color:#1a73e8;
+      background:#f8faff;
+    }
+    .hagaki-back-upload .upload-icon{
+      font-size:24px;
+      color:#999;
+    }
+    .hagaki-back-upload .upload-text{
+      font-size:10px;
+      color:#999;
+      text-align:center;
+    }
+
     /* 月選択UI */
     .month-selector{
       margin-bottom:20px;
@@ -676,6 +784,13 @@
 
       <!-- 月選択 -->
       <div id="monthSelector" class="month-selector"></div>
+
+      <!-- はがき裏面画像選択 -->
+      <div class="hagaki-back-selector" id="hagakiBackSelector">
+        <h4>はがき裏面画像を選択</h4>
+        <div class="hagaki-back-list" id="hagakiBackList"></div>
+        <input type="file" id="hagakiBackUploadInput" accept=".png,.jpg,.jpeg,.pdf" style="display:none" />
+      </div>
 
       <!-- アクションボタン -->
       <div class="action-buttons">
@@ -1203,9 +1318,109 @@
     }
 
     // ========================================
+    // はがき裏面画像管理
+    // ========================================
+    let selectedBackImageId = 'default';
+    let selectedBackImageUrl = '/otoku-anshin-back.png';
+
+    async function loadHagakiBackImages() {
+      try {
+        const res = await fetch('/api/hagaki-backs');
+        const data = await res.json();
+        renderHagakiBackList(data.files || []);
+      } catch (e) {
+        console.error('裏面画像一覧の取得に失敗:', e);
+      }
+    }
+
+    function renderHagakiBackList(files) {
+      const list = document.getElementById('hagakiBackList');
+      if (!list) return;
+      list.innerHTML = '';
+
+      files.forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'hagaki-back-item' + (file.id === selectedBackImageId ? ' selected' : '');
+        item.onclick = () => {
+          selectedBackImageId = file.id;
+          selectedBackImageUrl = file.url;
+          document.querySelectorAll('.hagaki-back-item').forEach(el => el.classList.remove('selected'));
+          item.classList.add('selected');
+        };
+
+        const ext = file.url.split('.').pop().toLowerCase();
+        if (ext === 'pdf') {
+          item.innerHTML = `<div class="pdf-placeholder">PDF</div><div class="item-name">${file.name}</div>`;
+        } else {
+          item.innerHTML = `<img src="${file.url}" alt="${file.name}" /><div class="item-name">${file.name}</div>`;
+        }
+
+        if (!file.isDefault) {
+          const delBtn = document.createElement('button');
+          delBtn.className = 'delete-btn';
+          delBtn.textContent = '\u00d7';
+          delBtn.onclick = async (e) => {
+            e.stopPropagation();
+            if (!confirm('この画像を削除しますか？')) return;
+            try {
+              await fetch(`/api/hagaki-backs/${file.id}`, { method: 'DELETE' });
+              if (selectedBackImageId === file.id) {
+                selectedBackImageId = 'default';
+                selectedBackImageUrl = '/otoku-anshin-back.png';
+              }
+              loadHagakiBackImages();
+            } catch (err) {
+              alert('削除に失敗しました');
+            }
+          };
+          item.appendChild(delBtn);
+        }
+
+        list.appendChild(item);
+      });
+
+      // アップロードボタン
+      const uploadBtn = document.createElement('div');
+      uploadBtn.className = 'hagaki-back-upload';
+      uploadBtn.innerHTML = '<span class="upload-icon">+</span><span class="upload-text">画像を追加</span>';
+      uploadBtn.onclick = () => document.getElementById('hagakiBackUploadInput').click();
+      list.appendChild(uploadBtn);
+    }
+
+    async function uploadHagakiBackImage(file) {
+      const formData = new FormData();
+      formData.append('image', file);
+      try {
+        const res = await fetch('/api/hagaki-backs/upload', { method: 'POST', body: formData });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || 'アップロード失敗');
+        }
+        const uploaded = await res.json();
+        selectedBackImageId = uploaded.id;
+        selectedBackImageUrl = uploaded.url;
+        loadHagakiBackImages();
+      } catch (e) {
+        alert('アップロードに失敗しました: ' + e.message);
+      }
+    }
+
+    // ========================================
     // アクションボタン
     // ========================================
     function setupBulkContact() {
+      // 裏面画像一覧を読み込み
+      loadHagakiBackImages();
+
+      // 画像アップロード
+      document.getElementById('hagakiBackUploadInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          uploadHagakiBackImage(file);
+          e.target.value = '';
+        }
+      });
+
       document.getElementById('generateDocument').addEventListener('click', () => {
         if (inspectionRows.length === 0) { alert('車検対象顧客がいません。'); return; }
         generateInspectionDocuments();
@@ -1277,8 +1492,8 @@
         '<script>' +
         'async function downloadPDF(){' +
         'const btn=document.querySelector(".control-btn.primary");const ot=btn.textContent;' +
-        'try{const ids=' + customerIdsJSON + ';btn.textContent="PDF生成中...";btn.disabled=true;' +
-        'const r=await fetch("/api/generate-hagaki-pdf",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({customerIds:ids})});' +
+        'try{const ids=' + customerIdsJSON + ';const backId="' + selectedBackImageId + '";btn.textContent="PDF生成中...";btn.disabled=true;' +
+        'const r=await fetch("/api/generate-hagaki-pdf",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({customerIds:ids,backImageId:backId})});' +
         'if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||"PDF生成に失敗しました");}' +
         'const b=await r.blob();const u=window.URL.createObjectURL(b);const a=document.createElement("a");' +
         'a.href=u;a.download="hagaki_"+new Date().toISOString().slice(0,10)+".pdf";document.body.appendChild(a);a.click();a.remove();' +
@@ -1313,7 +1528,8 @@
         </style></head><body>
         ${targetRows.map(row => {
           const addressPage = renderAddressCard(row);
-          const backPage = '<div class="back-page"><img src="/otoku-anshin-back.png" alt="お得で安心 車検のご案内" /></div>';
+          const backImgUrl = selectedBackImageUrl || '/otoku-anshin-back.png';
+          const backPage = '<div class="back-page"><img src="' + backImgUrl + '" alt="車検のご案内" /></div>';
           return addressPage + backPage;
         }).join('')}
         </body></html>`;

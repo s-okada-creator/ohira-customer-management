@@ -16,6 +16,7 @@
   "type": "module",
   "dependencies": {
     "@sparticuz/chromium": "^141.0.0",
+    "@types/multer": "^2.1.0",
     "@vercel/blob": "^2.0.0",
     "archiver": "^7.0.1",
     "cors": "^2.8.5",
@@ -23,6 +24,7 @@
     "express": "^5.1.0",
     "fast-csv": "^5.0.5",
     "googleapis": "^161.0.0",
+    "multer": "^2.1.1",
     "pdf-lib": "^1.17.1",
     "puppeteer": "^24.23.0",
     "puppeteer-core": "^24.24.0",
