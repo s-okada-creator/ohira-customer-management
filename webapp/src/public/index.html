@@ -1492,8 +1492,8 @@
         '<script>' +
         'async function downloadPDF(){' +
         'const btn=document.querySelector(".control-btn.primary");const ot=btn.textContent;' +
-        'try{const ids=' + customerIdsJSON + ';const backId="' + selectedBackImageId + '";btn.textContent="PDF生成中...";btn.disabled=true;' +
-        'const r=await fetch("/api/generate-hagaki-pdf",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({customerIds:ids,backImageId:backId})});' +
+        'try{const ids=' + customerIdsJSON + ';const backUrl=' + JSON.stringify(selectedBackImageUrl) + ';btn.textContent="PDF生成中...";btn.disabled=true;' +
+        'const r=await fetch("/api/generate-hagaki-pdf",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({customerIds:ids,backImageUrl:backUrl})});' +
         'if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||"PDF生成に失敗しました");}' +
         'const b=await r.blob();const u=window.URL.createObjectURL(b);const a=document.createElement("a");' +
         'a.href=u;a.download="hagaki_"+new Date().toISOString().slice(0,10)+".pdf";document.body.appendChild(a);a.click();a.remove();' +

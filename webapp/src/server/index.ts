@@ -10,6 +10,7 @@ import puppeteerCore from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import { PDFDocument } from 'pdf-lib';
 import multer from 'multer';
+import { put, list, del } from '@vercel/blob';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,21 +32,13 @@ for (const dir of staticDirCandidates) {
   }
 }
 
-// はがき裏面画像のアップロード設定
-const uploadsDir = path.resolve(process.cwd(), 'src', 'public', 'hagaki-backs');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+// はがき裏面画像のアップロード設定（Vercel Blob使用）
+// Blobストアのプレフィックス（同じプロジェクト内で他用途と区別）
+const HAGAKI_BLOB_PREFIX = 'hagaki-backs/';
 
+// multerはメモリストレージ（Blobへ転送するためディスクには書かない）
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadsDir),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname);
-      const name = `hagaki-back-${Date.now()}${ext}`;
-      cb(null, name);
-    }
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
   fileFilter: (_req, file, cb) => {
     const allowed = ['.png', '.jpg', '.jpeg', '.pdf'];
@@ -58,12 +51,16 @@ const upload = multer({
   }
 });
 
+function hasBlobToken(): boolean {
+  return !!process.env.BLOB_READ_WRITE_TOKEN;
+}
+
 app.get('/health', (_req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, blob: hasBlobToken() });
 });
 
 // はがき裏面画像一覧取得
-app.get('/api/hagaki-backs', (_req, res) => {
+app.get('/api/hagaki-backs', async (_req, res) => {
   try {
     const files: { id: string; name: string; url: string; isDefault: boolean }[] = [];
 
@@ -75,60 +72,80 @@ app.get('/api/hagaki-backs', (_req, res) => {
       isDefault: true
     });
 
-    // アップロード済み画像
-    if (fs.existsSync(uploadsDir)) {
-      const entries = fs.readdirSync(uploadsDir);
-      for (const entry of entries) {
-        const ext = path.extname(entry).toLowerCase();
-        if (['.png', '.jpg', '.jpeg', '.pdf'].includes(ext)) {
-          files.push({
-            id: entry,
-            name: entry,
-            url: `/hagaki-backs/${entry}`,
-            isDefault: false
-          });
-        }
+    if (hasBlobToken()) {
+      // Vercel Blobから一覧取得
+      const { blobs } = await list({ prefix: HAGAKI_BLOB_PREFIX });
+      for (const blob of blobs) {
+        // pathnameは "hagaki-backs/xxx.png" の形式
+        const filename = blob.pathname.substring(HAGAKI_BLOB_PREFIX.length);
+        if (!filename) continue;
+        files.push({
+          id: encodeURIComponent(blob.url),
+          name: filename,
+          url: blob.url,
+          isDefault: false
+        });
       }
     }
 
     res.json({ files });
   } catch (error) {
-    res.status(500).json({ error: '画像一覧の取得に失敗しました' });
+    console.error('裏面画像一覧の取得エラー:', error);
+    res.status(500).json({ error: '画像一覧の取得に失敗しました', detail: String(error) });
   }
 });
 
 // はがき裏面画像アップロード
-app.post('/api/hagaki-backs/upload', upload.single('image'), (req: any, res) => {
+app.post('/api/hagaki-backs/upload', upload.single('image'), async (req: any, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'ファイルが選択されていません' });
     }
+    if (!hasBlobToken()) {
+      return res.status(500).json({ error: 'Blobストレージが設定されていません（BLOB_READ_WRITE_TOKEN未設定）' });
+    }
+
     const file = req.file;
+    const ext = path.extname(file.originalname);
+    // ファイル名衝突を避けるためタイムスタンプ + ランダムを付与
+    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+    const pathname = `${HAGAKI_BLOB_PREFIX}${safeName}`;
+
+    const blob = await put(pathname, file.buffer, {
+      access: 'public',
+      contentType: file.mimetype,
+      addRandomSuffix: false
+    });
+
     res.json({
-      id: file.filename,
+      id: encodeURIComponent(blob.url),
       name: file.originalname,
-      url: `/hagaki-backs/${file.filename}`,
+      url: blob.url,
       isDefault: false
     });
   } catch (error) {
-    res.status(500).json({ error: 'アップロードに失敗しました' });
+    console.error('裏面画像アップロードエラー:', error);
+    res.status(500).json({ error: 'アップロードに失敗しました', detail: String(error) });
   }
 });
 
 // はがき裏面画像削除
-app.delete('/api/hagaki-backs/:id', (req, res) => {
+app.delete('/api/hagaki-backs/:id', async (req, res) => {
   try {
     const { id } = req.params;
     if (id === 'default') {
       return res.status(400).json({ error: 'デフォルト画像は削除できません' });
     }
-    const filePath = path.join(uploadsDir, id);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    if (!hasBlobToken()) {
+      return res.status(500).json({ error: 'Blobストレージが設定されていません' });
     }
+
+    const blobUrl = decodeURIComponent(id);
+    await del(blobUrl);
     res.json({ ok: true });
   } catch (error) {
-    res.status(500).json({ error: '削除に失敗しました' });
+    console.error('裏面画像削除エラー:', error);
+    res.status(500).json({ error: '削除に失敗しました', detail: String(error) });
   }
 });
 
@@ -420,20 +437,20 @@ app.get('/api/customers', async (_req, res) => {
 // はがきPDF生成エンドポイント
 app.post('/api/generate-hagaki-pdf', async (req, res) => {
   try {
-    const { customerIds, backImageId } = req.body;
+    const { customerIds, backImageUrl } = req.body;
 
     if (!customerIds || !Array.isArray(customerIds)) {
       return res.status(400).json({ error: '顧客IDが指定されていません' });
     }
 
-    console.log(`はがきPDF生成開始: ${customerIds.length}件の顧客`);
+    console.log(`はがきPDF生成開始: ${customerIds.length}件の顧客, backImageUrl=${backImageUrl || '(default)'}`);
 
     // 全顧客データを取得
     const allCustomers = await readCustomers();
-    
+
     // 指定された顧客のみをフィルタリング
-    const targetCustomers = customerIds[0] === 'all' 
-      ? allCustomers 
+    const targetCustomers = customerIds[0] === 'all'
+      ? allCustomers
       : allCustomers.filter(c => customerIds.includes(c['顧客番号']));
 
     if (targetCustomers.length === 0) {
@@ -444,27 +461,7 @@ app.post('/api/generate-hagaki-pdf', async (req, res) => {
     const addressPdfBytes = await generateAddressPdf(targetCustomers);
 
     // 裏面画像を取得（カスタム or デフォルト）
-    let backPdfBytes: Buffer;
-    if (backImageId && backImageId !== 'default') {
-      const customPath = path.join(uploadsDir, backImageId);
-      if (!fs.existsSync(customPath)) {
-        return res.status(400).json({ error: '指定された裏面画像が見つかりません' });
-      }
-      const ext = path.extname(backImageId).toLowerCase();
-      if (ext === '.pdf') {
-        backPdfBytes = fs.readFileSync(customPath);
-      } else {
-        // 画像ファイル（PNG/JPG）の場合、Puppeteerでハガキサイズに変換
-        backPdfBytes = Buffer.from(await convertImageToPdf(customPath));
-      }
-    } else {
-      const backPdfPath = path.resolve(process.cwd(), 'src', 'public', 'お得で安心♪.pdf');
-      if (!fs.existsSync(backPdfPath)) {
-        console.error('お得で安心♪.pdfが見つかりません:', backPdfPath);
-        return res.status(500).json({ error: 'お得で安心♪.pdfが見つかりません' });
-      }
-      backPdfBytes = fs.readFileSync(backPdfPath);
-    }
+    const backPdfBytes = await loadBackPdfBytes(backImageUrl);
     
     // 表面と裏面を結合
     const finalPdf = await combinePdfs(addressPdfBytes, backPdfBytes, targetCustomers.length);
@@ -483,9 +480,50 @@ app.post('/api/generate-hagaki-pdf', async (req, res) => {
 });
 
 /**
- * 画像ファイルをはがきサイズPDFに変換
+ * 裏面PDFバイト列を取得
+ * - backImageUrl 未指定 or 'default' の場合: デフォルトのお得で安心PDF
+ * - URL指定の場合: そのURLからフェッチし、画像ならPDFに変換
  */
-async function convertImageToPdf(imagePath: string): Promise<Uint8Array> {
+async function loadBackPdfBytes(backImageUrl?: string): Promise<Buffer> {
+  const isCustom = backImageUrl && backImageUrl !== '/otoku-anshin-back.png' && backImageUrl !== 'default';
+
+  if (!isCustom) {
+    const backPdfPath = path.resolve(process.cwd(), 'src', 'public', 'お得で安心♪.pdf');
+    if (!fs.existsSync(backPdfPath)) {
+      throw new Error(`デフォルト裏面PDFが見つかりません: ${backPdfPath}`);
+    }
+    return fs.readFileSync(backPdfPath);
+  }
+
+  // 外部URL（Vercel Blobなど）からフェッチ
+  const fetchUrl = backImageUrl!.startsWith('http')
+    ? backImageUrl!
+    : `${process.env.VERCEL_URL ? 'https://' + process.env.VERCEL_URL : 'http://localhost:' + (process.env.PORT || 3000)}${backImageUrl}`;
+
+  const response = await fetch(fetchUrl);
+  if (!response.ok) {
+    throw new Error(`裏面画像の取得に失敗しました (${response.status}): ${fetchUrl}`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  const contentType = (response.headers.get('content-type') || '').toLowerCase();
+  const urlLower = fetchUrl.toLowerCase();
+  const isPdf = contentType.includes('pdf') || urlLower.endsWith('.pdf');
+
+  if (isPdf) {
+    return buffer;
+  }
+
+  // 画像 → ハガキサイズPDFに変換
+  const ext = urlLower.endsWith('.png') ? '.png' : '.jpg';
+  return Buffer.from(await convertImageToPdf(buffer, ext));
+}
+
+/**
+ * 画像バッファをはがきサイズPDFに変換
+ */
+async function convertImageToPdf(imageData: Buffer, ext: string): Promise<Uint8Array> {
   const isVercel = process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
   let browser;
   if (isVercel) {
@@ -502,8 +540,6 @@ async function convertImageToPdf(imagePath: string): Promise<Uint8Array> {
   }
   try {
     const page = await browser.newPage();
-    const imageData = fs.readFileSync(imagePath);
-    const ext = path.extname(imagePath).toLowerCase();
     const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
     const base64 = imageData.toString('base64');
     const html = `<!DOCTYPE html><html><head><style>
