@@ -129,18 +129,21 @@ app.post('/api/hagaki-backs/upload', upload.single('image'), async (req: any, re
   }
 });
 
-// はがき裏面画像削除
-app.delete('/api/hagaki-backs/:id', async (req, res) => {
+// はがき裏面画像削除（URLをクエリパラメータで受け取る）
+app.delete('/api/hagaki-backs', async (req, res) => {
   try {
-    const { id } = req.params;
-    if (id === 'default') {
-      return res.status(400).json({ error: 'デフォルト画像は削除できません' });
+    const blobUrl = typeof req.query.url === 'string' ? req.query.url : '';
+    if (!blobUrl) {
+      return res.status(400).json({ error: '削除対象URLが指定されていません' });
     }
     if (!hasBlobToken()) {
       return res.status(500).json({ error: 'Blobストレージが設定されていません' });
     }
+    // 安全のため、自分のhagaki-backsプレフィックスのもののみ削除許可
+    if (!blobUrl.includes(HAGAKI_BLOB_PREFIX)) {
+      return res.status(400).json({ error: '削除対象が不正です' });
+    }
 
-    const blobUrl = decodeURIComponent(id);
     await del(blobUrl);
     res.json({ ok: true });
   } catch (error) {
