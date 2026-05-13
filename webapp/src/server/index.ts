@@ -686,14 +686,14 @@ function generateAddressHtml(customers: CustomerRow[]): string {
     if (isSender) {
       return padded.split('').map((d, i) => {
         if (i === 3) {
-          return `<div style="width: 2mm;"></div><span class="sender-postal-box">${d.trim() ? d : ''}</span>`;
+          return `<div class="sender-postal-separator"></div><span class="sender-postal-box">${d.trim() ? d : ''}</span>`;
         }
         return `<span class="sender-postal-box">${d.trim() ? d : ''}</span>`;
       }).join('');
     } else {
       return padded.split('').map((d, i) => {
         if (i === 3) {
-          return `<div class="postal-separator">ー</div><span class="postal-box">${d.trim() ? d : ''}</span>`;
+          return `<div class="postal-separator"></div><span class="postal-box">${d.trim() ? d : ''}</span>`;
         }
         return `<span class="postal-box">${d.trim() ? d : ''}</span>`;
       }).join('');
@@ -759,11 +759,9 @@ function generateAddressHtml(customers: CustomerRow[]): string {
       .join('');
     
     const nameWithHonorific = verticalName ? `<div class="recipient-name">${verticalName}様</div>` : '';
-    const stampBox = `<div class="stamp-box">切手貼付位置</div>`;
 
     return `
       <div class="sheet">
-        ${stampBox}
         ${postalElement}
         <div class="recipient-address">${addressLines}</div>
         ${nameWithHonorific}
@@ -801,49 +799,26 @@ function generateAddressHtml(customers: CustomerRow[]): string {
           position: relative;
           box-sizing: border-box;
         }
-        .stamp-box {
-          position: absolute;
-          top: 8mm;
-          left: 8mm;
-          width: 20mm;
-          height: 25mm;
-          border: 1.5px dashed #333;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 9pt;
-          color: #333;
-          writing-mode: vertical-rl;
-          text-orientation: upright;
-          letter-spacing: 1px;
-        }
         .recipient-postal {
           position: absolute;
-          top: 10mm;
-          right: 8mm;
+          top: 12mm;
+          right: 10mm;
           display: flex;
           gap: 1mm;
         }
         .postal-box {
           width: 5.5mm;
-          height: 7mm;
-          border: 1.5px solid #D32F2F;
+          height: 8mm;
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 14pt;
           font-weight: bold;
           color: black;
-          background: white;
           font-family: "Courier New", monospace;
         }
         .postal-separator {
-          width: 2mm;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 16pt;
-          color: #D32F2F;
+          width: 0mm;
         }
         .sender-postal {
           display: flex;
@@ -853,14 +828,15 @@ function generateAddressHtml(customers: CustomerRow[]): string {
         .sender-postal-box {
           width: 4mm;
           height: 5mm;
-          border: 1px dashed #D32F2F;
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 9pt;
           color: black;
-          background: white;
           font-family: "Courier New", monospace;
+        }
+        .sender-postal-separator {
+          width: 0mm;
         }
         .recipient-address {
           position: absolute;

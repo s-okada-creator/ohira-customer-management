@@ -1522,12 +1522,12 @@
           .sheet{width:100mm;height:148mm;background:white;margin:0 auto;page-break-after:always;position:relative;box-sizing:border-box;}
           .back-page{width:100mm;height:148mm;background:white;margin:0 auto;page-break-after:always;position:relative;box-sizing:border-box;overflow:hidden;}
           .back-page img{width:100%;height:100%;object-fit:contain;display:block;}
-          .stamp-box{position:absolute;top:8mm;left:8mm;width:20mm;height:25mm;border:1.5px dashed #333;display:flex;align-items:center;justify-content:center;font-size:9pt;color:#333;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:1px;}
-          .recipient-postal{position:absolute;top:10mm;right:8mm;display:flex;gap:1mm;}
-          .postal-box{width:5.5mm;height:7mm;border:1.5px solid #D32F2F;display:flex;align-items:center;justify-content:center;font-size:14pt;font-weight:bold;color:black;background:white;font-family:"Courier New",monospace;}
-          .postal-separator{width:2mm;display:flex;align-items:center;justify-content:center;font-size:16pt;color:#D32F2F;}
+          .recipient-postal{position:absolute;top:12mm;right:10mm;display:flex;gap:1mm;}
+          .postal-box{width:5.5mm;height:8mm;display:flex;align-items:center;justify-content:center;font-size:14pt;font-weight:bold;color:black;font-family:"Courier New",monospace;}
+          .postal-separator{width:0mm;}
           .sender-postal{display:flex;gap:1mm;margin-bottom:2mm;}
-          .sender-postal-box{width:4mm;height:5mm;border:1px dashed #D32F2F;display:flex;align-items:center;justify-content:center;font-size:9pt;color:black;background:white;font-family:"Courier New",monospace;}
+          .sender-postal-box{width:4mm;height:5mm;display:flex;align-items:center;justify-content:center;font-size:9pt;color:black;font-family:"Courier New",monospace;}
+          .sender-postal-separator{width:0mm;}
           .recipient-address{position:absolute;top:25mm;right:8mm;font-size:12pt;color:black;writing-mode:vertical-rl;text-orientation:upright;line-height:1.6;letter-spacing:1px;}
           .recipient-address span{display:inline-block;margin-left:5mm;}
           .recipient-name{position:absolute;top:35mm;right:45mm;font-size:24pt;font-weight:bold;color:black;writing-mode:vertical-rl;text-orientation:upright;line-height:1.4;letter-spacing:3px;}
@@ -1572,14 +1572,15 @@
       const senderInfo = [senderContact, senderName, senderAddress].filter(Boolean).map(l => `<div class="sender-line">${l}</div>`).join('');
       const nameWithHonorific = verticalName ? `<div class="recipient-name">${verticalName}様</div>` : '';
 
-      return `<div class="sheet"><div class="stamp-box">切手貼付位置</div>${postalElement}<div class="recipient-address">${addressLines}</div>${nameWithHonorific}<div class="sender-block"><div class="sender-info">${senderInfo}</div>${senderPostal}</div></div>`;
+      return `<div class="sheet">${postalElement}<div class="recipient-address">${addressLines}</div>${nameWithHonorific}<div class="sender-block"><div class="sender-info">${senderInfo}</div>${senderPostal}</div></div>`;
     }
 
     function renderPostalDigits(zip, isSender = false) {
       const digits = zip.replace(/[^0-9]/g, '').slice(0, 7).padEnd(7, ' ');
       return digits.split('').map((d, i) => {
         const cls = isSender ? 'sender-postal-box' : 'postal-box';
-        const sep = isSender ? `<div style="width:2mm;"></div>` : `<div class="postal-separator">ー</div>`;
+        const sepCls = isSender ? 'sender-postal-separator' : 'postal-separator';
+        const sep = `<div class="${sepCls}"></div>`;
         const box = `<span class="${cls}">${d.trim() ? d : ''}</span>`;
         return i === 3 ? sep + box : box;
       }).join('');
